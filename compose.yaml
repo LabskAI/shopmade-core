@@ -1,0 +1,84 @@
+x-app-environment: &app-environment
+  APP_ENV: ${APP_ENV:-production}
+  APP_DEBUG: ${APP_DEBUG:-false}
+  APP_URL: ${APP_URL:-http://localhost:8000}
+  SESSION_DRIVER: cookie
+  SESSION_DOMAIN: ${SESSION_DOMAIN:-}
+  SEED_DEMO: ${SEED_DEMO:-0}
+  DB_CONNECTION: pgsql
+  DB_HOST: postgres
+  DB_PORT: 5432
+  DB_DATABASE: shopmade
+  DB_USERNAME: shopmade
+  DB_PASSWORD: shopmade
+  DB_QUEUE_TABLE: queue_jobs
+  QUEUE_CONNECTION: database
+
+services:
+  app:
+    build:
+      context: .
+      target: app
+    volumes:
+      - .:/var/www/shopmade
+    environment:
+      <<: *app-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      # php-fpm only starts after the entrypoint (install, build, migrate) finishes, so a listening port means ready.
+      test: ["CMD-SHELL", "php -r 'exit(@fsockopen(\"127.0.0.1\", 9000) ? 0 : 1);'"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 180s
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "8000:80"
+    volumes:
+      - .:/var/www/shopmade
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/up >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  queue:
+    build:
+      context: .
+      target: worker
+    volumes:
+      - .:/var/www/shopmade
+    environment:
+      <<: *app-environment
+      SKIP_SETUP: "1"
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: shopmade
+      POSTGRES_USER: shopmade
+      POSTGRES_PASSWORD: shopmade
+    ports:
+      - "5433:5432"
+    volumes:
+      - shopmade_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shopmade -d shopmade"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  shopmade_postgres:

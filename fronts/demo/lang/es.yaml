@@ -1,0 +1,21 @@
+# Textos de la interfaz para las páginas en español (navegación, pie de página, accesibilidad).
+language_name: Español
+home: Inicio
+skip_to_content: Saltar al contenido
+menu: Menú principal
+languages: Idiomas
+call: Llamar
+email: Correo
+service_area: Zona de servicio
+services: Servicios
+hours: Horario
+follow: Síganos
+address: Dirección
+days:
+  Mo: lun
+  Tu: mar
+  We: mié
+  Th: jue
+  Fr: vie
+  Sa: sáb
+  Su: dom

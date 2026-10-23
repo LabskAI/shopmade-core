@@ -1,0 +1,69 @@
+# Business facts for the demo company (fictional). Every page, the navigation and footer,
+# the discovery files and the agents read these. If a fact appears on more than one page,
+# it belongs here. Run `php artisan front:lint demo` after editing.
+
+name: Demo Home Services
+legal_name: Demo Home Services LLC
+phone: "+1 239-555-0142"
+email: hello@demo-home-services.example
+
+cities:
+  - Naples
+  - Estero
+  - Bonita Springs
+
+services:
+  - slug: house-cleaning
+    name:
+      en: House cleaning
+      es: Limpieza de casas
+  - slug: office-cleaning
+    name:
+      en: Office cleaning
+      es: Limpieza de oficinas
+  - slug: move-out-cleaning
+    name:
+      en: Move-out cleaning
+      es: Limpieza de mudanzas
+
+# The first language is the default (served without a /<lang> prefix).
+languages:
+  - en
+  - es
+
+# schema.org openingHours format: day codes Mo Tu We Th Fr Sa Su, 24-hour times.
+hours:
+  - "Mo-Fr 08:00-18:00"
+  - "Sa 09:00-13:00"
+
+# Claims the front must never make. Matched case-insensitively as whole words in pages,
+# frontmatter and UI strings. Quote anything that starts with # or contains a colon.
+never_write:
+  - certified
+  - OSHA
+  - 5-star
+  - best in
+  - guaranteed
+  - "#1"
+  - award-winning
+  - licensed and insured
+  - certificado
+  - certificada
+  - garantizado
+  - garantizada
+  - 5 estrellas
+  - con licencia y seguro
+
+social: []
+
+# robots.txt and its Content-Signal line follow this policy.
+discovery:
+  ai_search: true
+  ai_training: false
+
+# The street address is published only when publish is true.
+address:
+  publish: false
+  locality: Naples
+  region: FL
+  country: US

@@ -1,0 +1,8 @@
+@import 'tailwindcss' source(none);
+@import './theme.css';
+
+/* Blade views that use utility classes: core, local plugins and installed Shopmade packages. */
+@source '../views';
+@source '../../plugins';
+@source '../../vendor/*/shopmade-*/resources/views';
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
