@@ -1,0 +1,16 @@
+{
+    "slug": "customer-notes",
+    "name": "Customer Notes",
+    "version": "1.0.0",
+    "summary": "A free-text note attached to each customer.",
+    "provider": "Plugins\\CustomerNotes\\ServiceProvider",
+    "mount": "/p/customer-notes",
+    "public": false,
+    "nav": [
+        { "label": "Customer notes", "route": "customer-notes.index", "roles": ["super_admin", "admin", "user"] }
+    ],
+    "attach": { "plugin": "customers", "label": "Customer notes", "route": "customer-notes.customer" },
+    "tables": ["p_customer_notes_notes"],
+    "depends": [],
+    "design_system": 1
+}

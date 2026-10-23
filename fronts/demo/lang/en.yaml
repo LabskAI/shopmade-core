@@ -1,0 +1,21 @@
+# UI strings for English pages (navigation, footer, accessibility labels).
+language_name: English
+home: Home
+skip_to_content: Skip to content
+menu: Main menu
+languages: Languages
+call: Call
+email: Email
+service_area: Service area
+services: Services
+hours: Hours
+follow: Follow us
+address: Address
+days:
+  Mo: Mon
+  Tu: Tue
+  We: Wed
+  Th: Thu
+  Fr: Fri
+  Sa: Sat
+  Su: Sun
