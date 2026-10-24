@@ -1,11 +1,11 @@
 # Public fronts — the front kit
 
-A company's public site, served by its own Shopmade install, from `fronts/<company>/` (`<company>` is `config('agents.company')`, env `AGENTS_COMPANY`, default `demo`). Edited under Admin → Website, from Claude over the site's MCP server, or by hand in the repo. The kit makes the site readable by people and by AI agents from day one. `fronts/demo/` is the reference front: the fictional "Demo Home Services", EN/ES, home and services pages, four skills (`brand-voice`, `design-direction`, `no-claims`, `design-taste`).
+A company's public site, served by its own Shopmade install, from `content/<company>/` (`<company>` is `config('agents.company')`, env `AGENTS_COMPANY`, default `demo`). Edited under Admin → Website, from Claude over the site's MCP server, or by hand in that folder. `content/` is kept out of the code (gitignored, a volume in Docker) and is its own git repository: every save is a commit, so a code deploy never touches client edits. On first boot `php artisan front:install` copies the starter site from `fronts/<company>/` (or `fronts/demo/`) into it. The kit makes the site readable by people and by AI agents from day one. `fronts/demo/` is the reference front: the fictional "Demo Home Services", EN/ES, home and services pages, four skills (`brand-voice`, `design-direction`, `no-claims`, `design-taste`).
 
 ## Folder
 
 ```
-fronts/<company>/
+content/<company>/
   facts.yaml              name, legal_name, phone, email, cities[], services[{slug, name}], languages[], hours[],
                           never_write[], social[], discovery{ai_search, ai_training}, address{publish, street, locality, region, postal_code, country}
   pages/<slug>.<lang>.md  YAML frontmatter between --- lines, then the markdown body
@@ -33,7 +33,7 @@ Everything else — layout, nav and footer from facts, the stylesheet, discovery
 | `/robots.txt`, `/sitemap.xml`, `/llms.txt`, `/llms-full.txt` | generated discovery files |
 
 - Unknown pages and languages are 404.
-- Content is read from `fronts/<company>` under `config('agents.paths.repo')` (default `base_path()`).
+- Content is read from `content/<company>` (`config('agents.paths.fronts')`, env `AGENTS_CONTENT_DIR`) under `config('agents.paths.repo')` (default `base_path()`).
 - Public pages are stateless: the front routes run without the session and CSRF middleware, so they set no cookies.
 - For the bundled `demo` company, every front response, 404s included, carries `X-Robots-Tag: noindex, nofollow` (it replaces a page's own `noindex`).
 - Deployment: on the front host, nginx `try_files $uri` serves the static `public/robots.txt` before Laravel. Send `/robots.txt` to `index.php` in that server block.
@@ -68,10 +68,10 @@ Every save from the website editor or MCP returns its report.
 
 ## Readiness check
 
-`App\Core\Front\FrontReadiness::check($baseUrl, $company, $query = [], $basePath = null)` runs the agent-readiness checks over HTTP: home answers 200 with a `<title>`, every page answers 200, robots.txt has `Sitemap:` and `Content-Signal:`, sitemap.xml lists every indexable page with its hreflang alternates, llms.txt exists, `Accept: text/markdown` returns frontmatter with `Vary: Accept`, and — only when `$query` is not empty, e.g. a signed link — `X-Robots-Tag: noindex`. `$baseUrl` is the front root (`https://example.com/site`, `https://example.com`); a bare host other than the front host gets `/{AGENTS_FRONT_PREFIX}` appended, and a query string in it (signed link) is sent with every request. The expected pages come from `fronts/<company>` under `$basePath` (default the repo).
+`App\Core\Front\FrontReadiness::check($baseUrl, $company, $query = [], $basePath = null)` runs the agent-readiness checks over HTTP: home answers 200 with a `<title>`, every page answers 200, robots.txt has `Sitemap:` and `Content-Signal:`, sitemap.xml lists every indexable page with its hreflang alternates, llms.txt exists, `Accept: text/markdown` returns frontmatter with `Vary: Accept`, and — only when `$query` is not empty, e.g. a signed link — `X-Robots-Tag: noindex`. `$baseUrl` is the front root (`https://example.com/site`, `https://example.com`); a bare host other than the front host gets `/{AGENTS_FRONT_PREFIX}` appended, and a query string in it (signed link) is sent with every request. The expected pages come from `content/<company>` under `$basePath` (default the repo).
 
 ## Website editor and MCP
 
 **Admin → Website** (`/admin/site`, routes `site.*`, capability `site.edit`) edits these files: Pages (with per-page history and restore), Facts, Theme (values of the custom properties `theme/tokens.css` already declares) and Discovery (`facts.discovery`, plus a readiness check of the live front); Forms says "not built yet". The MCP server exposes the same edits as tools (`pages_list`, `page_get`, `page_create`, `page_save`, `page_delete`, `page_history`, `page_restore`, `facts_get`, `facts_save`, `theme_get`, `theme_save`, `site_lint`); reads need the `operator` scope, writes `director`.
 
-Both go through `App\Core\Front\FrontEditor`. Each save writes one file inside `fronts/<company>` (slug and language checked, symlinks and anything resolving outside the folder refused), keeps unknown frontmatter and facts keys, is live at once, and records a `front_revisions` row with the new content (null for a delete). The first save of a file also records what was there before. Restore writes a saved version back as a new revision. Every save returns the linter's report.
+Both go through `App\Core\Front\FrontEditor`. Each save writes one file inside `content/<company>` (slug and language checked, symlinks and anything resolving outside the folder refused), keeps unknown frontmatter and facts keys, is live at once, records a `front_revisions` row with the new content (null for a delete) and commits the file in `content/`'s git history. A page save that contains a `never_write` phrase (in the body or any frontmatter value) is refused. The first save of a file also records what was there before. Restore writes a saved version back as a new revision. Every save returns the linter's report.

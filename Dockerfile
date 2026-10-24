@@ -1,4 +1,4 @@
-FROM php:8.4-fpm-trixie AS base
+FROM php:8.5-fpm-trixie AS base
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
@@ -12,7 +12,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && docker-php-ext-install -j"$(nproc)" \
         bcmath \
         intl \
-        opcache \
         pcntl \
         pdo_pgsql \
         pgsql \
@@ -49,7 +48,7 @@ FROM base AS worker
 CMD ["php", "artisan", "queue:work", "database", "--sleep=1", "--tries=3", "--timeout=300"]
 
 # Self-contained image for a registry or a PaaS (Easypanel, Coolify, …): code, vendor and the Vite build are baked in,
-# nginx serves port 8080. Keep storage/ and fronts/ on volumes, and set APP_KEY so a restart keeps sessions valid.
+# nginx serves port 8080. Keep storage/ and content/ (the site content) on volumes, and set APP_KEY so a restart keeps sessions valid.
 # Run the same image with `php artisan queue:work database` and `php artisan schedule:work` for the worker and scheduler.
 FROM base AS production
 
@@ -66,9 +65,8 @@ RUN composer install --no-interaction --prefer-dist --no-dev --optimize-autoload
     && npm ci --no-audit --no-fund \
     && npm run build \
     && rm -rf node_modules \
-    && cp -a fronts /opt/shopmade-fronts \
-    && mkdir -p storage/app storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
-    && chown -R www-data:www-data storage bootstrap/cache fronts \
+    && mkdir -p content storage/app storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
+    && chown -R www-data:www-data storage bootstrap/cache content \
     && chmod +x /usr/local/bin/serve.sh
 
 # HTTPS is terminated by the proxy in front (Easypanel, Traefik, Coolify): trust its X-Forwarded-* headers and send the

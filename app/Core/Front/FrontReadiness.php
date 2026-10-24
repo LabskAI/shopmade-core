@@ -23,7 +23,7 @@ class FrontReadiness
      * $baseUrl is the front root, e.g. https://example.com/site or https://demo.example.com. A bare host
      * root that is not config('agents.front.host') gets /{agents.front.prefix} appended, as routed.
      * A query string in $baseUrl is merged into $query, which is appended to every request. The
-     * expected pages come from fronts/{company} under $basePath (default: the repo).
+     * expected pages come from the content folder (agents.paths.fronts)/{company} under $basePath (default: the repo).
      *
      * @param  array<string, string>  $query
      * @return array{ok: bool, checks: list<array{name: string, ok: bool, detail: string}>}

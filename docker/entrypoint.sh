@@ -30,18 +30,16 @@ if [ "${SKIP_SETUP:-0}" != "1" ]; then
         bootstrap/cache
     chmod -R ug+rwx storage bootstrap/cache || true
 
-    # A new, empty volume on fronts/ hides the demo site baked into the image: copy it in on first boot.
-    if [ -d /opt/shopmade-fronts ] && [ -z "$(ls -A fronts 2>/dev/null)" ]; then
-        mkdir -p fronts
-        cp -a /opt/shopmade-fronts/. fronts/
-    fi
-
     if [ ! -f public/build/manifest.json ]; then
         npm ci --no-audit --no-fund
         npm run build
     fi
 
     php artisan migrate --force
+
+    # The site content lives in content/ (a volume in the production image), apart from the code: copy the starter
+    # site in on first boot. Existing content is never touched.
+    php artisan front:install
 
     if [ "${SEED_DEMO:-0}" = "1" ]; then
         php <<'PHP'
@@ -59,7 +57,7 @@ PHP
 
     # The production image runs php-fpm as www-data; its volumes (and anything setup just wrote) may be root's.
     if [ "${SHOPMADE_IMAGE:-}" = "production" ]; then
-        chown -R www-data:www-data storage bootstrap/cache fronts
+        chown -R www-data:www-data storage bootstrap/cache content
     fi
 fi
 
