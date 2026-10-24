@@ -6,7 +6,7 @@ Core ships:
 
 - Sign-in with four roles: `super_admin`, `admin`, `user` (staff) and `client` (portal).
 - Customers, client portal access and client change requests.
-- The public website: pages, facts, theme and SEO/AI discovery files, served from `fronts/<company>/` ([front kit](docs/front/README.md)).
+- The public website: pages, facts, theme and SEO/AI discovery files, served from `content/<company>/` ([front kit](docs/front/README.md)).
 - The website editor under **Admin → Website**, with page history and restore.
 - An MCP server (`/mcp/agents`) with OAuth 2.1, so Claude can read and edit the site.
 - A plugin system for small in-repo features (`plugins/`) and a hook API for Composer packages ([docs/packages.md](docs/packages.md)).
@@ -19,7 +19,7 @@ docker compose up --build
 docker compose exec app php artisan user:create-owner you@example.com "Your Name"
 ```
 
-Open [http://localhost:8000/login](http://localhost:8000/login) and sign in with the printed password. The public site is at [http://localhost:8000/site](http://localhost:8000/site); set `AGENTS_FRONT_HOST` to serve it at the root of its own domain, and `AGENTS_COMPANY` to pick the folder under `fronts/`.
+Open [http://localhost:8000/login](http://localhost:8000/login) and sign in with the printed password. The public site is at [http://localhost:8000/site](http://localhost:8000/site); set `AGENTS_FRONT_HOST` to serve it at the root of its own domain, and `AGENTS_COMPANY` to pick the folder under `content/`.
 
 The stack starts with `APP_ENV=production` and `APP_DEBUG=false`. For local development set `APP_ENV=local` and `APP_DEBUG=true` in `.env` (this also installs the dev dependencies and allows localhost OAuth callbacks).
 
@@ -38,14 +38,18 @@ docker build --target production -t shopmade-core .
 It bakes in the code, `vendor/` and the asset build, and serves HTTP on port 8080. Give it:
 
 - `APP_KEY` (from `php artisan key:generate --show`), `APP_URL` and the `DB_*` settings as environment variables;
-- volumes on `/var/www/shopmade/storage` and `/var/www/shopmade/fronts` (the website content lives there);
+- volumes on `/var/www/shopmade/storage` and `/var/www/shopmade/content` (the website content lives there, with its own git history; the first boot copies the starter site in);
 - a second container from the same image running `php artisan queue:work database` with `SKIP_SETUP=1`, and a third running `php artisan schedule:work` with `SKIP_SETUP=1`.
 
 Migrations run when the web container starts.
 
+### Upgrading a site that lived in `fronts/`
+
+Before `content/`, the live site was `fronts/<company>/`, usually on a volume mounted at `/var/www/shopmade/fronts`. Before you start the new image, move that volume (or copy its `<company>` folder) to `/var/www/shopmade/content`. `front:install` only copies the starter into an **empty** `content/<company>`, so if you start with a new empty volume the starter site goes live in place of yours. If you leave the old volume on `fronts/`, your edits stay outside `content/` and are lost when the container is recreated. On the first boot with content already in place, `front:install` commits a full snapshot of it as the start of the git history.
+
 ## Connect Claude
 
-Add `https://<your-host>/mcp/agents` as a custom connector in Claude. Sign in as an admin when Claude asks; the connector then reads (`operator`) and edits (`director`) the website. Every save is live and kept in the page history. Connectors are listed and revoked under **Admin → Connectors**.
+Add `https://<your-host>/mcp/agents` as a custom connector in Claude. Sign in as an admin when Claude asks; the connector then reads (`operator`) and edits (`director`) the website. Every save is live, kept in the page history and committed to the git history in `content/`. Connectors are listed and revoked under **Admin → Connectors**.
 
 ## Add a feature
 
@@ -70,7 +74,7 @@ vendor/bin/pint
 npm run dev
 ```
 
-Stack: Laravel 13, PHP 8.4+, PostgreSQL, Blade, Tailwind v4 and Alpine bundled by Vite, Lucide icons, Pest.
+Stack: Laravel 13, PHP 8.5, PostgreSQL, Blade, Tailwind v4 and Alpine bundled by Vite, Lucide icons, Pest.
 
 ## Repo map
 
@@ -80,7 +84,8 @@ Stack: Laravel 13, PHP 8.4+, PostgreSQL, Blade, Tailwind v4 and Alpine bundled b
 | `app/Core/Mcp`, `app/Core/OAuth` | The MCP server and its OAuth 2.1 server |
 | `app/Core/Packages/Hooks.php` | Where packages plug into core screens and the MCP server |
 | `app/Core/Plugins` | Plugin registry and loader for `plugins/*/plugin.json` |
-| `fronts/<company>/` | A company's site: `facts.yaml`, pages, skills, theme tokens (`demo` is the sample) |
+| `content/<company>/` | A company's live site: `facts.yaml`, pages, skills, theme tokens. Gitignored, with its own git history of every save |
+| `fronts/<company>/` | Starter sites `front:install` copies into `content/` on first boot (`demo` is the sample) |
 | `plugins/customer-notes` | Example plugin |
 | `docs/` | Agent brief, package guide, front kit |
 

@@ -6,6 +6,8 @@ use App\Core\Front\FrontEditor;
 use App\Core\Front\FrontKit;
 use App\Models\FrontRevision;
 use App\Models\User;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Process;
 
 require_once __DIR__.'/SiteHelpers.php';
 
@@ -112,4 +114,83 @@ it('writes theme tokens and facts, keeping the facts it does not know', function
     expect($this->editor->themeTokens()[$token])->toBe('#123456')
         ->and($this->editor->facts()['phone'])->toBe('+1 239 555 0100')
         ->and($this->editor->facts()['name'])->not->toBeEmpty();
+});
+
+it('refuses to save a page with a never-write phrase and leaves the live file as it was', function () {
+    $this->editor->saveFacts(['never_write' => ['best in town']], $this->actor);
+    $original = file_get_contents($this->front.'/pages/services.en.md');
+    $revisions = FrontRevision::query()->count();
+
+    expect(fn () => $this->editor->savePage('services', 'en', ['title' => 'Services', 'description' => 'What we do.', 'body' => 'We are the Best in town.'], $this->actor))
+        ->toThrow(AgentRefusedException::class, 'Never-write phrase "best in town"');
+
+    expect(file_get_contents($this->front.'/pages/services.en.md'))->toBe($original)
+        ->and(FrontRevision::query()->count())->toBe($revisions);
+});
+
+it('commits every save in the content folder git history', function () {
+    $this->editor->savePage('services', 'en', ['title' => 'Our services', 'description' => 'What we do.', 'body' => 'New body.'], $this->actor);
+
+    $log = Process::path(dirname($this->front))->run(['git', 'log', '--format=%an|%s'])->output();
+
+    expect($log)->toContain($this->actor->label().'|Edited pages/services.en.md');
+});
+
+it('copies the starter site into an empty content folder once and never over existing content', function () {
+    $root = dirname($this->front, 2);
+    config(['agents.paths.fronts' => 'content', 'agents.paths.starter' => 'fronts']);
+
+    $this->artisan('front:install')->assertSuccessful();
+
+    expect(file_get_contents($root.'/content/demo/pages/home.en.md'))->toBe(file_get_contents($this->front.'/pages/home.en.md'))
+        ->and(Process::path($root.'/content')->run(['git', 'log', '--format=%s'])->output())->toContain('Starter content from demo');
+
+    file_put_contents($root.'/content/demo/pages/home.en.md', 'client edit');
+    $this->artisan('front:install')->assertSuccessful();
+
+    expect(file_get_contents($root.'/content/demo/pages/home.en.md'))->toBe('client edit');
+});
+
+it('refuses a never-write phrase in the frontmatter on create and on restore', function () {
+    $this->editor->savePage('services', 'en', ['title' => 'Rock bottom services', 'description' => 'What we do.', 'body' => 'Body.'], $this->actor);
+    $banned = FrontRevision::query()->where('file', 'pages/services.en.md')->latest('id')->first();
+    $this->editor->savePage('services', 'en', ['title' => 'Services', 'description' => 'What we do.', 'body' => 'Body.'], $this->actor);
+    $this->editor->saveFacts(['never_write' => ['rock bottom']], $this->actor);
+
+    $refusal = function (Closure $save): ?string {
+        try {
+            $save();
+        } catch (AgentRefusedException $exception) {
+            return $exception->reason;
+        }
+
+        return null;
+    };
+
+    expect($refusal(fn () => $this->editor->createPage('about', 'en', ['title' => 'Rock bottom prices', 'description' => 'About us.'], $this->actor)))->toBe('invalid_params')
+        ->and($refusal(fn () => $this->editor->restore('pages/services.en.md', $banned->id, $this->actor)))->toBe('invalid_params')
+        ->and(is_file($this->front.'/pages/about.en.md'))->toBeFalse();
+});
+
+it('keeps the saved file and its revision when the git commit fails', function () {
+    Process::fake(['*' => Process::result('', 'fatal: Unable to create index.lock', 128)]);
+
+    $this->editor->savePage('services', 'en', ['title' => 'Our services', 'description' => 'What we do.', 'body' => 'New body.'], $this->actor);
+
+    expect(file_get_contents($this->front.'/pages/services.en.md'))->toContain('New body.')
+        ->and(FrontRevision::query()->where('file', 'pages/services.en.md')->latest('id')->value('content'))->toContain('New body.');
+});
+
+it('takes a full snapshot of content that is already in place', function () {
+    $root = dirname($this->front, 2);
+    config(['agents.paths.fronts' => 'content', 'agents.paths.starter' => 'fronts']);
+    File::copyDirectory($this->front, $root.'/content/demo');
+
+    $this->artisan('front:install')->assertSuccessful();
+
+    $tracked = Process::path($root.'/content')->run(['git', 'ls-files'])->output();
+
+    expect($tracked)->toContain('demo/facts.yaml')
+        ->and($tracked)->toContain('demo/lang/')
+        ->and($tracked)->toContain('demo/skills/');
 });

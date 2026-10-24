@@ -5,15 +5,19 @@ use App\Core\OAuth\RedirectUriPolicy;
 return [
 
     /*
-    | One install serves one company. Its public front lives in
-    | {repo}/fronts/{company}; the website editor and MCP write there directly.
+    | One install serves one company. Its live site content lives in
+    | {repo}/content/{company}, a folder kept out of the code (gitignored, a
+    | volume in Docker) with its own git history: the website editor and MCP
+    | write there and commit every save. front:install copies the starter
+    | content from {repo}/fronts/{company} (or fronts/demo) on first boot.
     */
 
     'company' => env('AGENTS_COMPANY', 'demo'),
 
     'paths' => [
         'repo' => env('AGENTS_REPO_DIR', base_path()),
-        'fronts' => 'fronts',
+        'fronts' => env('AGENTS_CONTENT_DIR', 'content'),
+        'starter' => 'fronts',
     ],
 
     'front' => [

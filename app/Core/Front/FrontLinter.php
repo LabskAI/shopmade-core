@@ -69,6 +69,48 @@ class FrontLinter
     }
 
     /**
+     * The never-write phrases a page or UI-strings file would contain if saved with this content, as messages like
+     * the never_write lint errors. Other files (facts, theme) are not checked: they don't carry site copy.
+     *
+     * @return list<string>
+     */
+    public function neverWriteIn(string $company, string $file, string $content, ?string $basePath = null): array
+    {
+        $neverWrite = $this->kit->neverWrite($company, $basePath);
+
+        if ($neverWrite === []) {
+            return [];
+        }
+
+        $texts = [];
+
+        if (str_starts_with($file, 'pages/') && str_ends_with($file, '.md')) {
+            $parsed = FrontMatter::parse($content);
+            $texts = $this->texts(['frontmatter' => $parsed['frontmatter'], 'body' => $parsed['body']]);
+        } elseif (str_starts_with($file, 'lang/') && (str_ends_with($file, '.yaml') || str_ends_with($file, '.yml'))) {
+            try {
+                $strings = Yaml::parse($content);
+            } catch (ParseException) {
+                return [];
+            }
+
+            foreach ($this->flatten(is_array($strings) ? $strings : []) as $key => $text) {
+                $texts[] = ['string '.$key, $text];
+            }
+        }
+
+        $messages = [];
+
+        foreach ($texts as [$where, $text]) {
+            foreach ($this->findPhrases($text, $neverWrite) as [$phrase, $excerpt]) {
+                $messages[] = sprintf('Never-write phrase "%s" in %s: "%s"', $phrase, $where, $excerpt);
+            }
+        }
+
+        return $messages;
+    }
+
+    /**
      * @return array{0: array<string, mixed>|null, 1: list<array{level: string, rule: string, file: string, message: string}>}
      */
     private function checkFacts(string $company, ?string $basePath, string $front): array

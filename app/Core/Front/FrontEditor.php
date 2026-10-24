@@ -44,6 +44,7 @@ class FrontEditor
         private FrontLinter $linter,
         private FrontThemeTokens $tokens,
         private FrontFactsYaml $factsYaml,
+        private FrontContentHistory $history,
     ) {}
 
     public function company(): string
@@ -333,7 +334,8 @@ class FrontEditor
 
     /**
      * Writes (or, with null content, deletes) one front file and records the revision. Nothing is written or recorded
-     * when the content is unchanged.
+     * when the content is unchanged, and a page or UI-strings file that contains a never-write phrase is refused. Each
+     * save is also a commit in the content folder's own git history (FrontContentHistory).
      *
      * @return array{path: string, saved: bool}
      */
@@ -345,6 +347,16 @@ class FrontEditor
 
         if ($before === $content) {
             return ['path' => $path, 'saved' => false];
+        }
+
+        $banned = $content === null ? [] : $this->linter->neverWriteIn($this->company(), $file, $content);
+
+        if ($banned !== []) {
+            throw new AgentRefusedException(
+                'Not saved: '.implode(' ', array_slice($banned, 0, 3)),
+                'invalid_params',
+                'Reword it without the phrases listed under never_write in the facts.',
+            );
         }
 
         $hasHistory = FrontRevision::query()->where('company', $this->company())->where('file', $file)->exists();
@@ -361,7 +373,9 @@ class FrontEditor
             File::put($absolute, $content);
         }
 
-        $this->record($file, $content, $actor, $note ?? ($content === null ? 'Deleted' : ($before === null ? 'Created' : 'Edited')));
+        $note ??= $content === null ? 'Deleted' : ($before === null ? 'Created' : 'Edited');
+        $this->record($file, $content, $actor, $note);
+        $this->history->commit($this->company(), $note.' '.$file, $actor?->label(), $file);
 
         return ['path' => $path, 'saved' => true];
     }
