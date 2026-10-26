@@ -250,8 +250,10 @@ class McpServer
         return "Shopmade site tools for {$company}. You edit the company website directly: every save is live at once and kept as a "
             .'revision (page_history lists them, page_restore brings one back). Read first: the skill resources (shopmade://'
             .$company.'/skills/…) for the house voice and design rules, facts_get for the business facts (never write anything listed in '
-            .'never_write), pages_list and page_get for the pages, theme_get for the design tokens. Edit with page_create, page_save, '
-            .'page_delete, facts_save and theme_save; each write returns the lint report of the front, so fix any error it lists. '
+            .'never_write), pages_list and page_get for the pages, theme_get for the design tokens, components_css_get for the component '
+            .'styles. Edit with page_create, page_save (bodies may use the kit components: :::section, :::cards, :::steps, :::flow, :::faq, '
+            .':::cta, :::form…), page_delete, facts_save, theme_save, components_css_save and asset_put; each write returns the lint report '
+            .'of the front, so fix any error it lists. '
             ."Limits: {$perMinute} requests per minute (tool calls, resources and prompts together).";
     }
 }

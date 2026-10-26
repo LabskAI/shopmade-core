@@ -28,6 +28,9 @@ class ToolRegistry
         'theme_get' => ThemeGetTool::class,
         'theme_save' => ThemeSaveTool::class,
         'site_lint' => SiteLintTool::class,
+        'components_css_get' => ComponentsCssGetTool::class,
+        'components_css_save' => ComponentsCssSaveTool::class,
+        'asset_put' => AssetPutTool::class,
     ];
 
     public function __construct(private Container $container, private Hooks $hooks) {}

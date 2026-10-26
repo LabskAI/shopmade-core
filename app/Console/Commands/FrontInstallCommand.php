@@ -9,16 +9,18 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 
-#[Signature('front:install {company? : Defaults to AGENTS_COMPANY}')]
-#[Description('Copy the starter site into the content folder when the company has no content yet. Existing content is never touched.')]
+#[Signature('front:install {company? : Defaults to AGENTS_COMPANY} {--force : Replace existing content with the shipped front (fronts/<company>), after committing a snapshot of it}')]
+#[Description('Copy the starter site into the content folder when the company has no content yet. Existing content is never touched unless --force is given.')]
 class FrontInstallCommand extends Command
 {
     public function handle(FrontKit $kit, FrontContentHistory $history): int
     {
         $company = (string) ($this->argument('company') ?: config('agents.company'));
         $target = $kit->directory($company);
+        $hasContent = is_dir($target) && (scandir($target) ?: []) !== ['.', '..'];
+        $force = (bool) $this->option('force');
 
-        if (is_dir($target) && (scandir($target) ?: []) !== ['.', '..']) {
+        if ($hasContent && ! $force) {
             $history->commit($company, 'Snapshot of the existing content');
             $this->info("Content for {$company} is already in place; nothing copied.");
 
@@ -34,16 +36,40 @@ class FrontInstallCommand extends Command
             return self::FAILURE;
         }
 
+        if ($hasContent) {
+            if (basename($starter) !== $company) {
+                $this->error("There is no shipped front at {$starterRoot}/{$company}; the existing content was left as it is.");
+
+                return self::FAILURE;
+            }
+
+            if (is_link($target) || realpath($target) === realpath($starter)) {
+                $this->error("{$target} is a symlink or the shipped front itself; nothing replaced.");
+
+                return self::FAILURE;
+            }
+
+            $history->commit($company, 'Snapshot before front:install --force');
+            File::deleteDirectory($target);
+        }
+
         File::ensureDirectoryExists($target);
 
         if (! File::copyDirectory($starter, $target)) {
             File::deleteDirectory($target);
-            $this->error("Could not copy the starter content from {$starter} into {$target}; nothing installed.");
+            $this->error("Could not copy the starter content from {$starter} into {$target}; nothing installed."
+                .($hasContent ? ' The previous content is in the content history (the snapshot commit).' : ''));
 
             return self::FAILURE;
         }
 
-        $history->commit($company, 'Starter content from '.basename($starter));
+        $history->commit($company, ($hasContent ? 'Replaced with the shipped front from ' : 'Starter content from ').basename($starter));
+
+        if ($hasContent) {
+            $this->info("Replaced the content of {$company} with {$starter}. The previous content is the commit before this one in the content history.");
+
+            return self::SUCCESS;
+        }
 
         $this->info("Copied the starter content from {$starter} into {$target}.");
         if ($company !== 'demo') {
