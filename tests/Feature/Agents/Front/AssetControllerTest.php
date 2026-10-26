@@ -20,7 +20,7 @@ it('serves the well-known icons from assets/icons at the front root', function (
 
     $this->get('/site/favicon.svg')->assertOk()->assertHeader('Content-Type', 'image/svg+xml');
     $this->get('/site/favicon.ico')->assertNotFound();
-    $this->get(route('front.home'))->assertSee('<link rel="icon" href="http://localhost/site/favicon.svg" type="image/svg+xml">', false);
+    $this->get(route('front.home'))->assertSee('<link rel="icon" href="'.url('/').'/site/favicon.svg" type="image/svg+xml">', false);
 });
 
 it('answers 404 for missing files, unlisted types, hidden files and traversal', function (string $path) {
