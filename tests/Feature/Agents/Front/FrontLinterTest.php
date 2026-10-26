@@ -50,7 +50,7 @@ it('reports a never-write phrase with the file and the sentence it appears in', 
 
 it('matches never-write phrases case-insensitively and only as whole words', function () {
     FrontFixture::create([
-        'pages/services.en.md' => acmePage([], "# Cleaning\n\nWe keep your best interests in mind, and #10 on the list is windows.\n\nWe are BEST IN\nNaples."),
+        'pages/services.en.md' => acmePage([], "# Cleaning\n\nWe keep your best interests in mind, and #10 on the list is windows.\n\nWe are BEST IN\nRiverton."),
     ]);
 
     $messages = array_column(lintAcme()['errors'], 'message');
@@ -60,7 +60,7 @@ it('matches never-write phrases case-insensitively and only as whole words', fun
 
 it('rejects cities and services that are not in the facts', function () {
     FrontFixture::create([
-        'pages/services.en.md' => acmePage(['cities' => ['Naples', 'Miami'], 'service' => 'pool-cleaning']),
+        'pages/services.en.md' => acmePage(['cities' => ['Riverton', 'Pine Ridge'], 'service' => 'pool-cleaning']),
     ]);
 
     $errors = lintAcme()['errors'];
@@ -68,7 +68,7 @@ it('rejects cities and services that are not in the facts', function () {
     expect($errors)->toContain([
         'rule' => 'cities',
         'file' => 'fronts/acme/pages/services.en.md',
-        'message' => 'Frontmatter cities "Miami" is not in facts.cities (Naples, Estero).',
+        'message' => 'Frontmatter cities "Pine Ridge" is not in facts.cities (Riverton, Oak Hollow).',
     ])->toContain([
         'rule' => 'services',
         'file' => 'fronts/acme/pages/services.en.md',

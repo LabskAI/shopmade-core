@@ -97,9 +97,9 @@ class FrontFixture
         return [
             'name' => 'Acme Cleaning',
             'legal_name' => 'Acme Cleaning LLC',
-            'phone' => '+1 239-555-0100',
+            'phone' => '+1 555-555-0100',
             'email' => 'hello@acme.example',
-            'cities' => ['Naples', 'Estero'],
+            'cities' => ['Riverton', 'Oak Hollow'],
             'services' => [
                 ['slug' => 'house-cleaning', 'name' => ['en' => 'House cleaning', 'es' => 'Limpieza de casas']],
                 ['slug' => 'office-cleaning', 'name' => 'Office cleaning'],
@@ -112,9 +112,9 @@ class FrontFixture
             'address' => [
                 'publish' => false,
                 'street' => '100 Example Ave',
-                'locality' => 'Naples',
-                'region' => 'FL',
-                'postal_code' => '34102',
+                'locality' => 'Riverton',
+                'region' => 'ST',
+                'postal_code' => '00000',
                 'country' => 'US',
             ],
         ];
@@ -128,19 +128,19 @@ class FrontFixture
         return [
             'facts.yaml' => self::facts(),
             'pages/home.en.md' => self::page(
-                ['title' => 'Acme Cleaning in Naples', 'description' => 'House and office cleaning in Naples and Estero.', 'layout' => 'home'],
-                "# Clean homes in Naples\n\nWe clean houses and offices.\n\n[Our services](services)",
+                ['title' => 'Acme Cleaning in Riverton', 'description' => 'House and office cleaning in Riverton and Oak Hollow.', 'layout' => 'home'],
+                "# Clean homes in Riverton\n\nWe clean houses and offices.\n\n[Our services](services)",
             ),
             'pages/home.es.md' => self::page(
-                ['title' => 'Acme Cleaning en Naples', 'description' => 'Limpieza de casas y oficinas en Naples y Estero.', 'layout' => 'home'],
-                "# Casas limpias en Naples\n\nLimpiamos casas y oficinas.\n\n[Nuestros servicios](services)",
+                ['title' => 'Acme Cleaning en Riverton', 'description' => 'Limpieza de casas y oficinas en Riverton y Oak Hollow.', 'layout' => 'home'],
+                "# Casas limpias en Riverton\n\nLimpiamos casas y oficinas.\n\n[Nuestros servicios](services)",
             ),
             'pages/services.en.md' => self::page(
-                ['title' => 'Cleaning services', 'description' => 'House cleaning and office cleaning.', 'nav_label' => 'Services', 'services' => ['house-cleaning'], 'cities' => ['Naples']],
+                ['title' => 'Cleaning services', 'description' => 'House cleaning and office cleaning.', 'nav_label' => 'Services', 'services' => ['house-cleaning'], 'cities' => ['Riverton']],
                 "# Cleaning services\n\nHouse cleaning every week.",
             ),
             'pages/services.es.md' => self::page(
-                ['title' => 'Servicios de limpieza', 'description' => 'Limpieza de casas y de oficinas.', 'nav_label' => 'Servicios', 'services' => ['house-cleaning'], 'cities' => ['Naples']],
+                ['title' => 'Servicios de limpieza', 'description' => 'Limpieza de casas y de oficinas.', 'nav_label' => 'Servicios', 'services' => ['house-cleaning'], 'cities' => ['Riverton']],
                 "# Servicios de limpieza\n\nLimpieza de casas cada semana.",
             ),
             'lang/en.yaml' => "language_name: English\ncall: Call\n",
