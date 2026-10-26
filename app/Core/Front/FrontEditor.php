@@ -240,7 +240,7 @@ class FrontEditor
         $phone = $changes['phone'] ?? null;
 
         if ($phone !== null && (! is_string($phone) || mb_strlen($phone) > 50 || preg_match('/^[0-9+().\-\s]+(\s*(x|ext\.?)\s*\d+)?$/i', trim($phone)) !== 1)) {
-            throw new AgentRefusedException('phone must be a phone number of at most 50 characters.', 'invalid_params', 'For example (239) 555-0100 or +1 239 555 0100.');
+            throw new AgentRefusedException('phone must be a phone number of at most 50 characters.', 'invalid_params', 'For example (555) 555-0100 or +1 555 555 0100.');
         }
     }
 

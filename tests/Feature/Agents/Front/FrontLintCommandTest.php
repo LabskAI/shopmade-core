@@ -15,8 +15,8 @@ it('passes the demo front', function () {
 it('fails quoting the never-write phrase and the sentence it is in', function () {
     FrontFixture::create([
         'pages/home.en.md' => FrontFixture::page(
-            ['title' => 'Acme Cleaning in Naples', 'description' => 'House and office cleaning in Naples and Estero.', 'layout' => 'home'],
-            "# Clean homes in Naples\n\nWe are OSHA certified.",
+            ['title' => 'Acme Cleaning in Riverton', 'description' => 'House and office cleaning in Riverton and Oak Hollow.', 'layout' => 'home'],
+            "# Clean homes in Riverton\n\nWe are OSHA certified.",
         ),
     ]);
 
