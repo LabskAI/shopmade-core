@@ -63,23 +63,23 @@ it('renders hero art, components, logo, CTA, fonts, component CSS and scripts wi
         ->toContain("connect-src 'self' https://aiformflow.com https://*.aiformflow.com")
         ->toContain("object-src 'none'")
         ->and($html)
-        ->toMatch('#<img class="front-hero__image" src="http://localhost/site/assets/hero-art\.svg\?v=[0-9a-f]+" alt="" width="1200" height="900"#')
+        ->toMatch('#<img class="front-hero__image" src="'.preg_quote(url('/'), '#').'/site/assets/hero-art\.svg\?v=[0-9a-f]+" alt="" width="1200" height="900"#')
         ->toContain('<p class="front-kicker">Example Co</p>')
         ->toContain('<h1>We build software</h1>')
         ->toContain('<div class="front-cards" data-reveal>')
-        ->toMatch('#<img class="brand-logo" src="http://localhost/site/assets/logo\.svg\?v=[0-9a-f]+" alt="Example Co" width="180" height="32">#')
+        ->toMatch('#<img class="brand-logo" src="'.preg_quote(url('/'), '#').'/site/assets/logo\.svg\?v=[0-9a-f]+" alt="Example Co" width="180" height="32">#')
         ->toContain('<a class="btn btn-primary header-cta" href="#form-contact">Book a call</a>')
-        ->toMatch('#<link rel="preload" href="http://localhost/site/assets/fonts/example\.woff2\?v=[0-9a-f]+" as="font"#')
+        ->toMatch('#<link rel="preload" href="'.preg_quote(url('/'), '#').'/site/assets/fonts/example\.woff2\?v=[0-9a-f]+" as="font"#')
         ->toContain('font-family: "Example Sans"')
         ->toContain('font-weight: 400 700;')
-        ->toMatch('#\.front-card \{ border-radius: 12px; background: url\("http://localhost/site/assets/hero-art\.svg\?v=[0-9a-f]+"\); \}#')
+        ->toMatch('#\.front-card \{ border-radius: 12px; background: url\("'.preg_quote(url('/'), '#').'/site/assets/hero-art\.svg\?v=[0-9a-f]+"\); \}#')
         ->toContain('.front-cta { background: none; }')
         ->not->toContain('evil.example')
         ->not->toContain('off.js')
-        ->toMatch('#<script src="http://localhost/site/assets/motion\.js\?v=[0-9a-f]+" defer\s+nonce="'.preg_quote($nonce[1], '#').'"></script>#')
+        ->toMatch('#<script src="'.preg_quote(url('/'), '#').'/site/assets/motion\.js\?v=[0-9a-f]+" defer\s+nonce="'.preg_quote($nonce[1], '#').'"></script>#')
         ->toContain('<script src="https://aiformflow.com/embed/v1/form.js" defer  nonce="'.$nonce[1].'"></script>')
         ->toContain('<a href="https://docs.example.com">Docs</a>')
-        ->toContain('<li><a href="http://localhost/site/services">Privacy</a></li>');
+        ->toContain('<li><a href="'.url('/').'/site/services">Privacy</a></li>');
 
     preg_match_all('/<script\b(?![^>]*application\/ld\+json)[^>]*>/', $html, $scripts);
 
@@ -93,7 +93,7 @@ it('labels the language switcher with language_name and uses the pt and fr strin
 
     $this->get(route('front.language', 'pt'))
         ->assertSee('<html lang="pt">', false)
-        ->assertSee('<a href="http://localhost/site/fr" hreflang="fr" lang="fr">Français</a>', false)
+        ->assertSee('<a href="'.url('/').'/site/fr" hreflang="fr" lang="fr">Français</a>', false)
         ->assertSee('aria-current="true">Português</a>', false)
         ->assertSee('<a class="btn btn-primary header-cta" href="#form-contact">Agendar</a>', false)
         ->assertSee('data-lang="pt"', false)
@@ -139,7 +139,7 @@ it('points the header CTA at the page that shows the form', function () {
     ]);
 
     $this->get(route('front.page', 'services'))
-        ->assertSee('<a class="btn btn-primary header-cta" href="http://localhost/site#form-contact">Book a call</a>', false)
+        ->assertSee('<a class="btn btn-primary header-cta" href="'.url('/').'/site#form-contact">Book a call</a>', false)
         ->assertDontSee('form.js');
 });
 

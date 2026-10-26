@@ -53,7 +53,7 @@ it('renders a section with kicker, image and nested cards', function () {
         ->toContain('<section class="front-section front-section--muted brand-band front-section--split" id="services" data-reveal>')
         ->toContain('<p class="front-kicker">What we do</p>')
         ->toContain('<h2>Services</h2>')
-        ->toMatch('#<img src="http://localhost/site/assets/shot\.png\?v=[0-9a-f]+" alt="A screenshot" width="2" height="3"#')
+        ->toMatch('#<img src="'.preg_quote(url('/'), '#').'/site/assets/shot\.png\?v=[0-9a-f]+" alt="A screenshot" width="2" height="3"#')
         ->toContain('<div class="front-cards" data-reveal>')
         ->toContain('<h3 class="front-card__title">')
         ->toContain('Websites')
@@ -75,7 +75,7 @@ it('renders card chips, a second image, a button and an asset icon', function ()
         ->toContain('class="front-card__image front-card__image--second"')
         ->toContain('alt="Two"')
         ->toContain('<a class="btn btn-primary" href="https://app.example.com">Visit Example App</a>')
-        ->toMatch('#<span class="front-icon"><img src="http://localhost/site/assets/icons/spark\.svg\?v=[0-9a-f]+" alt=""#');
+        ->toMatch('#<span class="front-icon"><img src="'.preg_quote(url('/'), '#').'/site/assets/icons/spark\.svg\?v=[0-9a-f]+" alt=""#');
 });
 
 it('renders stat, faq, cta, quote, steps, flow, proof and timeline', function () {
@@ -132,7 +132,7 @@ it('renders stat, faq, cta, quote, steps, flow, proof and timeline', function ()
         ->toContain('<div class="front-faq">')
         ->toContain('<summary class="front-item__question">Do you host?')
         ->toContain('<aside class="front-cta" data-reveal>')
-        ->toContain('<a class="btn btn-primary" href="http://localhost/site/services">See services</a>')
+        ->toContain('<a class="btn btn-primary" href="'.url('/').'/site/services">See services</a>')
         ->toContain('<a class="btn btn-outline" href="mailto:hi@example.com">Email</a>')
         ->toContain('<blockquote class="front-quote__text"><p>It works.</p>')
         ->toContain('<cite>Sam</cite>')
@@ -142,7 +142,7 @@ it('renders stat, faq, cta, quote, steps, flow, proof and timeline', function ()
         ->toContain('<li class="front-flow__arrow" aria-hidden="true">')
         ->toContain('<p class="front-chip front-step__chip">Built by Example Co</p>')
         ->toContain('<h3 class="front-proof__title">Fast</h3>')
-        ->toContain('<p class="front-proof__more"><a href="http://localhost/site/services">More</a></p>')
+        ->toContain('<p class="front-proof__more"><a href="'.url('/').'/site/services">More</a></p>')
         ->toContain('<h3 class="front-timeline__title">Launch</h3>')
         ->toContain('<dd class="front-stat__value">3</dd>')
         ->toContain('<span class="front-chip front-timeline__status">done</span>')
@@ -248,7 +248,7 @@ it('leaves a body without fences exactly as plain markdown renders it', function
     $body = "# Title\n\nSome *text* with [a page](services) and <b>raw</b> html.\n\n- one\n- two";
 
     expect($site->bodyHtml(['slug' => 'home', 'lang' => 'en', 'body' => $body]))->toBe(
-        str_replace('href="services"', 'href="http://localhost/site/services"', Str::markdown($body, ['html_input' => 'strip', 'allow_unsafe_links' => false])),
+        str_replace('href="services"', 'href="'.url('/').'/site/services"', Str::markdown($body, ['html_input' => 'strip', 'allow_unsafe_links' => false])),
     );
 });
 
@@ -311,14 +311,14 @@ it('writes every component as readable markdown without fence lines', function (
     expect($markdown)
         ->not->toMatch('/^:::/m')
         ->toContain("Intro.\n\n*What we do*\n\n## Services")
-        ->toContain('### [Websites](http://localhost/site/services)')
+        ->toContain('### [Websites]('.url('/').'/site/services)')
         ->toContain("### Example App\n\n*Live · Beta*\n\nAn app.")
-        ->toMatch('#!\[Shot\]\(http://localhost/site/assets/shot\.png\?v=[0-9a-f]+\)#')
+        ->toMatch('#!\[Shot\]\('.preg_quote(url('/'), '#').'/site/assets/shot\.png\?v=[0-9a-f]+\)#')
         ->toContain('[Visit](https://app.example.com)')
         ->toContain("### Do you host?\n\nYes.")
         ->toContain("1. **Call**\n   We listen.\n2. **Build**")
         ->toContain('1. **Website** (Ours)')
-        ->toContain("## Ready?\n\nLet's talk.\n\n[See services](http://localhost/site/services)")
+        ->toContain("## Ready?\n\nLet's talk.\n\n[See services](".url('/').'/site/services)')
         ->toContain("> It works.\n\n> — Sam, Owner")
         ->toContain('**12** Sites')
         ->toContain('### Get a quote')
