@@ -936,7 +936,8 @@ class FrontSite
     }
 
     /**
-     * True for an https URL on an AIFormFlow host (FORM_HOSTS or a subdomain).
+     * True for an https URL on an AIFormFlow host: one of FORM_HOSTS or a single subdomain label under it
+     * (forms.aiformflow.com, not a.b.aiformflow.com), the same hosts the CSP `https://*.<host>` source matches.
      */
     public static function isFormHostUrl(string $url): bool
     {
@@ -947,7 +948,7 @@ class FrontSite
         $host = strtolower($match[1]);
 
         foreach (self::FORM_HOSTS as $allowed) {
-            if ($host === $allowed || str_ends_with($host, '.'.$allowed)) {
+            if ($host === $allowed || preg_match('/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.'.preg_quote($allowed, '/').'$/', $host) === 1) {
                 return true;
             }
         }

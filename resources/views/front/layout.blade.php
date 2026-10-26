@@ -35,7 +35,7 @@
         <style>{!! $componentsCss !!}</style>
     @endif
     @foreach ($jsonLd as $block)
-        <script type="application/ld+json">{!! $block !!}</script>
+        <script type="application/ld+json"@if ($cspNonce) nonce="{{ $cspNonce }}"@endif>{!! $block !!}</script>
     @endforeach
 </head>
 <body class="layout-{{ $layout }}">

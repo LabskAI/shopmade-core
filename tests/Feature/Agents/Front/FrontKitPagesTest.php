@@ -81,7 +81,9 @@ it('renders hero art, components, logo, CTA, fonts, component CSS and scripts wi
         ->toContain('<a href="https://docs.example.com">Docs</a>')
         ->toContain('<li><a href="'.url('/').'/site/services">Privacy</a></li>');
 
-    preg_match_all('/<script\b(?![^>]*application\/ld\+json)[^>]*>/', $html, $scripts);
+    preg_match_all('/<script\b[^>]*>/', $html, $scripts);
+
+    expect($html)->toMatch('#<script type="application/ld\+json" nonce="'.preg_quote($nonce[1], '#').'">\{#');
 
     foreach ($scripts[0] as $tag) {
         expect($tag)->toContain('nonce="'.$nonce[1].'"');

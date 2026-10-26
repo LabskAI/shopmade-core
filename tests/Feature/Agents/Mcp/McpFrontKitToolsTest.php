@@ -114,5 +114,13 @@ it('refuses scripts, unknown types, traversal, mismatched content and bad base64
     'traversal' => ['../x.svg', base64_encode('<svg/>'), -32602],
     'html posing as svg' => ['x.svg', base64_encode('<html><script>alert(1)</script></html>'), -32602],
     'text posing as png' => ['x.png', base64_encode('not a png'), -32602],
+    'svg with a script' => ['x.svg', base64_encode('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'), -32602],
+    'svg with a prefixed script' => ['x.svg', base64_encode('<svg xmlns:s="http://www.w3.org/2000/svg"><s:script>alert(1)</s:script></svg>'), -32602],
+    'svg with an onload attribute' => ['x.svg', base64_encode('<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>'), -32602],
+    'svg with a spaced event attribute' => ['x.svg', base64_encode("<svg xmlns=\"http://www.w3.org/2000/svg\"><rect\nONclick = \"alert(1)\"/></svg>"), -32602],
+    'svg with a javascript href' => ['x.svg', base64_encode('<svg xmlns="http://www.w3.org/2000/svg"><a href="javascript:alert(1)"><rect/></a></svg>'), -32602],
+    'svg with an encoded javascript href' => ['x.svg', base64_encode('<svg xmlns="http://www.w3.org/2000/svg"><a href="&#106;ava&#x09;script&#58;alert(1)"><rect/></a></svg>'), -32602],
+    'svg with a foreignObject' => ['x.svg', base64_encode('<svg xmlns="http://www.w3.org/2000/svg"><foreignObject><div>x</div></foreignObject></svg>'), -32602],
+    'svg with an entity' => ['x.svg', base64_encode('<?xml version="1.0"?><!DOCTYPE svg [<!ENTITY x "y">]><svg xmlns="http://www.w3.org/2000/svg">&x;</svg>'), -32602],
     'bad base64' => ['x.svg', '%%%not-base64%%%', -32602],
 ]);

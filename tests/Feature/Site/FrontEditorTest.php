@@ -194,3 +194,24 @@ it('takes a full snapshot of content that is already in place', function () {
         ->and($tracked)->toContain('demo/lang/')
         ->and($tracked)->toContain('demo/skills/');
 });
+
+it('refuses an SVG asset with active content and keeps a plain one', function () {
+    $svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4"/><text x="0" y="8">Turn on = off</text></svg>';
+    $reason = function (string $content): ?string {
+        try {
+            $this->editor->putAsset('icons/x.svg', $content, $this->actor);
+        } catch (AgentRefusedException $exception) {
+            return $exception->getMessage();
+        }
+
+        return null;
+    };
+
+    expect($reason('<svg xmlns="http://www.w3.org/2000/svg"><SCRIPT>alert(1)</SCRIPT></svg>'))->toContain('a <script> element')
+        ->and($reason('<svg xmlns="http://www.w3.org/2000/svg"><image href="x.png" onerror="alert(1)"/></svg>'))->toContain('an on…= event attribute')
+        ->and($reason('<svg xmlns="http://www.w3.org/2000/svg"><a xlink:href=" JavaScript:alert(1)"><rect/></a></svg>'))->toContain('a javascript: URL')
+        ->and($reason('<svg xmlns="http://www.w3.org/2000/svg"><foreignobject/></svg>'))->toContain('a <foreignObject> element')
+        ->and(is_file($this->front.'/assets/icons/x.svg'))->toBeFalse()
+        ->and($reason($svg))->toBeNull()
+        ->and(file_get_contents($this->front.'/assets/icons/x.svg'))->toBe($svg);
+});

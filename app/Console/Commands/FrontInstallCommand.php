@@ -49,7 +49,12 @@ class FrontInstallCommand extends Command
                 return self::FAILURE;
             }
 
-            $history->commit($company, 'Snapshot before front:install --force');
+            if (! $history->commit($company, 'Snapshot before front:install --force')) {
+                $this->error("Could not commit a snapshot of the existing content of {$company} to the content history; nothing was replaced or deleted. Fix the content folder's git repository and run the command again.");
+
+                return self::FAILURE;
+            }
+
             File::deleteDirectory($target);
         }
 
