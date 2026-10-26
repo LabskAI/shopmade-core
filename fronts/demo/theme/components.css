@@ -1,0 +1,41 @@
+/* Brand styles for the kit components. Class contract: front-NAME on each component, front-NAME--VARIANT for
+   variant="…", front-NAME__PART for its parts, plus the tokens a page passes with class="…".
+   Images load only from assets/ (url("assets/…")). */
+.front-section--muted {
+    border-radius: 12px;
+}
+
+.front-card {
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(31, 42, 40, 0.08);
+}
+
+.front-card--featured {
+    border-color: var(--color-accent);
+}
+
+.front-chip--live {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-accent-ink);
+}
+
+.front-cta {
+    border-radius: 16px;
+    background-image: url("assets/hero-art.svg");
+    background-position: right -40px center;
+    background-repeat: no-repeat;
+    background-size: auto 140%;
+    background-blend-mode: soft-light;
+}
+
+.is-reveal-ready {
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.is-reveal-ready.is-revealed {
+    opacity: 1;
+    transform: none;
+}

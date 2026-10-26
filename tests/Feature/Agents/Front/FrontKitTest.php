@@ -12,7 +12,7 @@ it('reads the demo facts, languages and never-write list', function () {
     $facts = $kit->facts('demo', base_path());
 
     expect($facts['name'])->toBe('Demo Home Services')
-        ->and($facts['cities'])->toBe(['Naples', 'Estero', 'Bonita Springs'])
+        ->and($facts['cities'])->toBe(['Riverton', 'Oak Hollow', 'Pine Ridge'])
         ->and($facts['discovery'])->toBe(['ai_search' => true, 'ai_training' => false])
         ->and($kit->languages('demo', base_path()))->toBe(['en', 'es'])
         ->and($kit->neverWrite('demo', base_path()))->toContain('certified', 'OSHA', '5-star', '#1', 'licensed and insured')

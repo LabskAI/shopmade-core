@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" role="img" aria-labelledby="hero-art-title">
+  <title id="hero-art-title">A tidy house with a sparkle above the roof</title>
+  <rect width="640" height="480" rx="24" fill="#f2f0ea"/>
+  <circle cx="500" cy="120" r="70" fill="#dfe9e5"/>
+  <path d="M170 250 320 130l150 120v150H170z" fill="#ffffff" stroke="#1f2a28" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M140 262 320 116l180 146" fill="none" stroke="#146b57" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="290" y="300" width="60" height="100" rx="6" fill="#146b57"/>
+  <rect x="205" y="280" width="56" height="48" rx="4" fill="#dfe9e5" stroke="#1f2a28" stroke-width="5"/>
+  <rect x="380" y="280" width="56" height="48" rx="4" fill="#dfe9e5" stroke="#1f2a28" stroke-width="5"/>
+  <path d="M500 70l10 30 30 10-30 10-10 30-10-30-30-10 30-10z" fill="#146b57"/>
+  <rect x="80" y="400" width="480" height="10" rx="5" fill="#1f2a28" opacity="0.15"/>
+</svg>
