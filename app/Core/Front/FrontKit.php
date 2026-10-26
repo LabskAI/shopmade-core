@@ -199,6 +199,14 @@ class FrontKit
     }
 
     /**
+     * The company's component CSS (theme/components.css), or null when the front has none.
+     */
+    public function componentsCss(string $company, ?string $basePath = null): ?string
+    {
+        return $this->read($company, 'theme/components.css', $basePath);
+    }
+
+    /**
      * UI strings from lang/<lang>.yaml ([] when missing or invalid).
      *
      * @return array<string, mixed>

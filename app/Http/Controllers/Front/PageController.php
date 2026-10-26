@@ -55,7 +55,8 @@ class PageController extends FrontController
 
     /**
      * The HTML page, or its markdown source for clients that prefer it. A `noindex` page sends
-     * `X-Robots-Tag: noindex` with both, because the markdown has no robots meta tag.
+     * `X-Robots-Tag: noindex` with both, because the markdown has no robots meta tag. The HTML page
+     * carries a per-response CSP nonce: only its own scripts, company assets and AIFormFlow run.
      */
     private function render(Request $request, FrontSite $site, FrontJsonLd $jsonLd, string $slug, string $lang): Response
     {
@@ -76,12 +77,15 @@ class PageController extends FrontController
             ]);
         }
 
+        $nonce = base64_encode(random_bytes(16));
+
         return response()->view('front.page', [
-            ...$site->viewData($page),
+            ...$site->viewData($page, $nonce),
             'jsonLd' => $jsonLd->scripts($site, $page),
         ], 200, [
             ...$headers,
             'Link' => $site->linkHeader(),
+            'Content-Security-Policy' => FrontSite::contentSecurityPolicy($nonce),
         ]);
     }
 
