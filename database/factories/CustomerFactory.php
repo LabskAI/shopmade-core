@@ -30,7 +30,7 @@ class CustomerFactory extends Factory
     {
         return $this->state(fn () => [
             'name' => 'Harbor Point Plaza',
-            'address' => '100 Example Ave, Naples, FL',
+            'address' => '100 Example Ave, Riverton, ST 00000',
             'billing_name' => 'Example Property Management, LLC',
             'primary_contact_name' => 'Dana Example',
             'primary_contact_email' => 'manager@example.com',

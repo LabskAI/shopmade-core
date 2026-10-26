@@ -19,11 +19,11 @@ it('renders the home page in the default language with navigation and footer fro
 
     $this->get(route('front.home'))
         ->assertSee('<html lang="en">', false)
-        ->assertSee('<title>Acme Cleaning in Naples</title>', false)
-        ->assertSee('<h1>Clean homes in Naples</h1>', false)
+        ->assertSee('<title>Acme Cleaning in Riverton</title>', false)
+        ->assertSee('<h1>Clean homes in Riverton</h1>', false)
         ->assertSee('<a href="'.route('front.page', 'services').'">Services</a>', false)
-        ->assertSee('<a class="call" href="tel:+12395550100">Call +1 239-555-0100</a>', false)
-        ->assertSeeInOrder(['Service area', 'Naples', 'Estero', 'Services', 'House cleaning', 'Office cleaning', 'Hours', 'Mon-Fri 08:00-18:00'])
+        ->assertSee('<a class="call" href="tel:+15555550100">Call +1 555-555-0100</a>', false)
+        ->assertSeeInOrder(['Service area', 'Riverton', 'Oak Hollow', 'Services', 'House cleaning', 'Office cleaning', 'Hours', 'Mon-Fri 08:00-18:00'])
         ->assertSee('--color-accent: #123456;', false)
         ->assertSee('&copy; '.now()->year.' Acme Cleaning LLC', false);
 });
@@ -33,9 +33,9 @@ it('renders the Spanish home under its language prefix with Spanish strings', fu
 
     $this->get(route('front.language', 'es'))
         ->assertSee('<html lang="es">', false)
-        ->assertSee('<h1>Casas limpias en Naples</h1>', false)
+        ->assertSee('<h1>Casas limpias en Riverton</h1>', false)
         ->assertSee('aria-current="page">Inicio</a>', false)
-        ->assertSee('Llamar +1 239-555-0100')
+        ->assertSee('Llamar +1 555-555-0100')
         ->assertSee('Limpieza de casas')
         ->assertSee('<a href="'.route('front.localized', ['es', 'services']).'">Nuestros servicios</a>', false);
 });
@@ -84,14 +84,14 @@ it('describes the business in JSON-LD without ratings or the street address', fu
         '@context' => 'https://schema.org',
         '@type' => 'LocalBusiness',
         'name' => 'Acme Cleaning',
-        'telephone' => '+1 239-555-0100',
-        'areaServed' => [['@type' => 'City', 'name' => 'Naples'], ['@type' => 'City', 'name' => 'Estero']],
-        'address' => ['@type' => 'PostalAddress', 'addressLocality' => 'Naples', 'addressRegion' => 'FL', 'addressCountry' => 'US'],
+        'telephone' => '+1 555-555-0100',
+        'areaServed' => [['@type' => 'City', 'name' => 'Riverton'], ['@type' => 'City', 'name' => 'Oak Hollow']],
+        'address' => ['@type' => 'PostalAddress', 'addressLocality' => 'Riverton', 'addressRegion' => 'ST', 'addressCountry' => 'US'],
         'openingHours' => ['Mo-Fr 08:00-18:00'],
     ])->not->toHaveKey('aggregateRating')
         ->and($service)->toMatchArray(['@type' => 'Service', 'name' => 'House cleaning', 'provider' => ['@id' => route('front.home').'#business']])
         ->and($html)->not->toContain('100 Example Ave')
-        ->and($html)->not->toContain('34102');
+        ->and($html)->not->toContain('00000');
 });
 
 it('publishes the street address when facts allow it', function () {
@@ -102,8 +102,8 @@ it('publishes the street address when facts allow it', function () {
 
     $response = $this->get(route('front.home'));
 
-    expect(frontJsonLd($response->getContent())[0]['address'])->toMatchArray(['streetAddress' => '100 Example Ave', 'postalCode' => '34102']);
-    $response->assertSee('<li>100 Example Ave, Naples, FL, 34102, US</li>', false);
+    expect(frontJsonLd($response->getContent())[0]['address'])->toMatchArray(['streetAddress' => '100 Example Ave', 'postalCode' => '00000']);
+    $response->assertSee('<li>100 Example Ave, Riverton, ST, 00000, US</li>', false);
 });
 
 it('drops rating claims from a page JSON-LD block', function () {
@@ -207,7 +207,7 @@ it('serves the front at the root of the configured front host', function () {
         FrontFixture::create();
 
         $this->get('http://front.test/')
-            ->assertSee('<h1>Clean homes in Naples</h1>', false)
+            ->assertSee('<h1>Clean homes in Riverton</h1>', false)
             ->assertSee('<link rel="canonical" href="http://front.test">', false);
         $this->get('http://front.test/es/services')->assertSee('<h1>Servicios de limpieza</h1>', false);
         $this->get('http://front.test/robots.txt')->assertSee('Sitemap: http://front.test/sitemap.xml');

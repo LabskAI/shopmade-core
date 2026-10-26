@@ -82,13 +82,13 @@ it('saves facts and theme tokens', function () {
     [$bearer, $session] = mcpDirector();
     $token = array_key_first(mcpCall('theme_get', [], $bearer, $session)->json('result.structuredContent.tokens'));
 
-    mcpCall('facts_save', ['phone' => '+1 239 555 0100'], $bearer, $session)->assertJsonPath('result.structuredContent.saved', true);
+    mcpCall('facts_save', ['phone' => '+1 555 555 0100'], $bearer, $session)->assertJsonPath('result.structuredContent.saved', true);
     mcpCall('theme_save', ['tokens' => [['name' => $token, 'value' => '#123456']]], $bearer, $session)->assertJsonPath('result.structuredContent.saved', true);
     mcpCall('theme_save', ['tokens' => [['name' => $token, 'value' => 'url(evil)']]], $bearer, $session)->assertJsonPath('error.code', -32602);
     mcpCall('facts_save', ['email' => 'not-an-email'], $bearer, $session)->assertJsonPath('error.code', -32602);
     mcpCall('facts_save', ['phone' => 'call me maybe'], $bearer, $session)->assertJsonPath('error.code', -32602);
 
-    expect(mcpCall('facts_get', [], $bearer, $session)->json('result.structuredContent.facts.phone'))->toBe('+1 239 555 0100');
+    expect(mcpCall('facts_get', [], $bearer, $session)->json('result.structuredContent.facts.phone'))->toBe('+1 555 555 0100');
 });
 
 it('refuses tools once the connector user can no longer edit the website', function () {

@@ -55,11 +55,11 @@ it('describes the business and its pages in llms.txt and llms-full.txt', functio
     $this->get(route('front.llms'))
         ->assertSeeInOrder([
             '# Acme Cleaning',
-            '> House and office cleaning in Naples and Estero.',
-            '- Phone: +1 239-555-0100',
-            '- Service area: Naples, Estero',
+            '> House and office cleaning in Riverton and Oak Hollow.',
+            '- Phone: +1 555-555-0100',
+            '- Service area: Riverton, Oak Hollow',
             '## Pages (en)',
-            '- [Acme Cleaning in Naples]('.route('front.home').'): House and office cleaning in Naples and Estero.',
+            '- [Acme Cleaning in Riverton]('.route('front.home').'): House and office cleaning in Riverton and Oak Hollow.',
             '- [Cleaning services]('.route('front.page', 'services').'): House cleaning and office cleaning.',
             '## Pages (es)',
             '- [Full text of every page]('.route('front.llms-full').')',
