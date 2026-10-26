@@ -325,6 +325,14 @@ class FrontEditor
             throw new AgentRefusedException("The content is not a .{$extension} file.", 'invalid_params', 'Send the file itself, base64-encoded.');
         }
 
+        if ($extension === 'svg' && ($active = $this->svgActiveContent($content)) !== null) {
+            throw new AgentRefusedException(
+                "The SVG contains {$active}; an SVG asset may not carry scripts, on…= event attributes, javascript: URLs, foreignObject or entity declarations.",
+                'invalid_params',
+                'Export the SVG as plain shapes and paths (most editors have an "optimized" or "plain SVG" option).',
+            );
+        }
+
         $file = 'assets/'.$relative;
 
         return $this->locked(function () use ($file, $content, $actor): array {
@@ -749,6 +757,32 @@ class FrontEditor
                 default => [],
             }, true),
         };
+    }
+
+    /**
+     * What makes the SVG able to run code when opened, or null when it is plain drawing. Checked on the raw bytes and
+     * again with character references decoded, since attribute values like &#106;avascript: are decoded by the parser.
+     */
+    private function svgActiveContent(string $svg): ?string
+    {
+        $gap = '[\s\x00-\x1f]*';
+        $javascript = '/'.implode($gap, str_split('javascript')).$gap.':/i';
+        $checks = [
+            'a <script> element' => '/<\s*(?:[\w.-]+:)?script\b/i',
+            'a <foreignObject> element' => '/<\s*(?:[\w.-]+:)?foreignObject\b/i',
+            'an on…= event attribute' => '/[\s"\'\/](?:[\w.-]+:)?on[a-z]+\s*=/i',
+            'a javascript: URL' => $javascript,
+            'an entity declaration' => '/<!ENTITY\b/i',
+        ];
+        $decoded = html_entity_decode($svg, ENT_QUOTES | ENT_XML1 | ENT_HTML5, 'UTF-8');
+
+        foreach ($checks as $label => $pattern) {
+            if (preg_match($pattern, $svg) === 1 || preg_match($pattern, $decoded) === 1) {
+                return $label;
+            }
+        }
+
+        return null;
     }
 
     private function assetUrl(string $file): ?string

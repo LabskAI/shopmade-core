@@ -10,7 +10,8 @@ use Throwable;
 /**
  * The content folder (agents.paths.fronts, one sub-folder per company) is its own git repository, kept apart from the
  * code: every website save is a commit there, so a client's edits have a full history and undo and a code deploy
- * never touches them. A failed commit is reported and never fails the save; front_revisions still records it.
+ * never touches them. A failed commit is reported and never fails the save; front_revisions still records it. Callers
+ * that are about to remove content check the returned flag and stop when the snapshot did not land.
  */
 class FrontContentHistory
 {
@@ -19,9 +20,10 @@ class FrontContentHistory
     /**
      * Commits the given company's folder (or one file in it) with the message and author. While the folder has no
      * commit yet (a fresh repository, or an existing site just mounted) the whole company folder goes into the first
-     * commit, so lang/, skills/ and assets/ are tracked from the start.
+     * commit, so lang/, skills/ and assets/ are tracked from the start. Returns true when the content is committed
+     * (or there was nothing new to commit) and false when git failed; the failure is reported, never thrown.
      */
-    public function commit(string $company, string $message, ?string $author = null, ?string $file = null): void
+    public function commit(string $company, string $message, ?string $author = null, ?string $file = null): bool
     {
         try {
             $root = dirname($this->kit->directory($company));
@@ -35,13 +37,17 @@ class FrontContentHistory
             $this->git($root, ['add', '-A', '--', $path]);
 
             if ($this->run($root, ['diff', '--cached', '--quiet', '--', $path])->successful()) {
-                return;
+                return true;
             }
 
             $name = $author !== null && trim($author) !== '' ? $author : 'Shopmade';
             $this->git($root, ['-c', 'user.name='.$name, '-c', 'user.email=shopmade@localhost', 'commit', '--quiet', '-m', $message, '--', $path]);
+
+            return true;
         } catch (Throwable $exception) {
             report($exception);
+
+            return false;
         }
     }
 

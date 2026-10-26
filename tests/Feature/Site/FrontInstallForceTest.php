@@ -36,3 +36,20 @@ it('leaves existing content alone when the company has no shipped front of its o
 
     expect(file_get_contents($this->root.'/content/other/pages/home.en.md'))->toBe('live site');
 });
+
+it('deletes nothing when the snapshot of the existing content cannot be committed', function () {
+    $this->artisan('front:install')->assertSuccessful();
+    file_put_contents($this->root.'/content/demo/pages/home.en.md', 'client edit');
+    file_put_contents($this->root.'/content/demo/pages/extra.en.md', 'unsaved page');
+    $before = File::allFiles($this->root.'/content/demo');
+
+    Process::fake(['*' => Process::result('', 'fatal: Unable to create index.lock', 128)]);
+
+    $this->artisan('front:install', ['--force' => true])
+        ->expectsOutputToContain('Could not commit a snapshot')
+        ->assertFailed();
+
+    expect(file_get_contents($this->root.'/content/demo/pages/home.en.md'))->toBe('client edit')
+        ->and(file_get_contents($this->root.'/content/demo/pages/extra.en.md'))->toBe('unsaved page')
+        ->and(File::allFiles($this->root.'/content/demo'))->toHaveCount(count($before));
+});
