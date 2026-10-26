@@ -19,3 +19,10 @@ days:
   Fr: Fri
   Sa: Sat
   Su: Sun
+contact: Contact
+legal: Legal
+open_form: Open the form
+open_form_page: Open the form on its own page
+form_error: The form didn't load.
+form_error_help: Open it on its own page, or contact us. Nothing is lost.
+prefer_to_talk: Prefer to talk?
