@@ -1,9 +1,9 @@
 ---
-title: Servicios de limpieza en Naples, Estero y Bonita Springs
-description: Limpieza de casas, limpieza de oficinas y limpieza de mudanzas de Demo Home Services en Naples, Estero y Bonita Springs.
+title: Servicios de limpieza en Riverton, Oak Hollow y Pine Ridge
+description: Limpieza de casas, limpieza de oficinas y limpieza de mudanzas de Demo Home Services en Riverton, Oak Hollow y Pine Ridge.
 layout: page
 nav_label: Servicios
-cities: [Naples, Estero, Bonita Springs]
+cities: [Riverton, Oak Hollow, Pine Ridge]
 services: [house-cleaning, office-cleaning, move-out-cleaning]
 ---
 
@@ -23,6 +23,20 @@ Escritorios, cocinas, baños y pisos, cuando su equipo ya se ha ido. Por las tar
 
 Casas vacías limpias de arriba abajo: dentro de gabinetes y electrodomésticos, zócalos y alféizares.
 
+## Cómo es una visita
+
+:::flow label="Cómo es una visita"
+:::step title="Recorrido" icon="map-pin"
+Vemos las habitaciones con usted.
+:::
+:::step title="Lista de tareas" icon="check" chip="Usted la puede cambiar"
+Usted lee y ajusta la lista escrita.
+:::
+:::step title="Visita" icon="sparkle"
+El equipo sigue la lista, habitación por habitación.
+:::
+:::
+
 ## Dónde trabajamos
 
-Naples, Estero y Bonita Springs. Llámenos para confirmar una dirección.
+Riverton, Oak Hollow y Pine Ridge. Llámenos para confirmar una dirección.

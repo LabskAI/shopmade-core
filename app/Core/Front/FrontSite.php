@@ -13,6 +13,28 @@ class FrontSite
 {
     public const LAYOUTS = ['home', 'page'];
 
+    /**
+     * The opt-in AIFormFlow embed script, loaded only on a page that shows a live form.
+     */
+    public const EMBED_SCRIPT = 'https://aiformflow.com/embed/v1/form.js';
+
+    /**
+     * The only value hero.position may take ("x% y%"), so nothing else reaches the style attribute.
+     */
+    public const HERO_POSITION = '/^\d{1,3}% \d{1,3}%$/';
+
+    /**
+     * Front-root file name => file under assets/ (served by the well-known icon routes).
+     */
+    public const WELL_KNOWN_ICONS = [
+        'favicon.ico' => 'icons/favicon.ico',
+        'favicon.svg' => 'icons/favicon.svg',
+        'apple-touch-icon.png' => 'icons/apple-touch-icon.png',
+        'icon-192.png' => 'icons/icon-192.png',
+        'icon-512.png' => 'icons/icon-512.png',
+        'site.webmanifest' => 'icons/site.webmanifest',
+    ];
+
     private const DEFAULT_STRINGS = [
         'language_name' => '',
         'home' => 'Home',
@@ -26,7 +48,34 @@ class FrontSite
         'hours' => 'Hours',
         'follow' => 'Follow',
         'address' => 'Address',
+        'contact' => 'Contact',
+        'legal' => 'Legal',
+        'open_form' => 'Open the form',
+        'open_form_page' => 'Open the form on its own page',
+        'form_title' => '',
+        'form_lead' => '',
+        'form_error' => "The form didn't load.",
+        'form_error_help' => 'Open it on its own page, or contact us. Nothing is lost.',
+        'prefer_to_talk' => 'Prefer to talk?',
     ];
+
+    /**
+     * Switcher labels for common languages when lang/<lang>.yaml has no language_name.
+     */
+    private const LANGUAGE_NAMES = [
+        'en' => 'English',
+        'es' => 'Español',
+        'pt' => 'Português',
+        'fr' => 'Français',
+        'de' => 'Deutsch',
+        'it' => 'Italiano',
+        'nl' => 'Nederlands',
+    ];
+
+    /**
+     * Hosts an opt-in AIFormFlow embed or script may load from (the host itself and its subdomains).
+     */
+    public const FORM_HOSTS = ['aiformflow.com', 'aiff.dev'];
 
     private const DEFAULT_DAYS = ['Mo' => 'Mon', 'Tu' => 'Tue', 'We' => 'Wed', 'Th' => 'Thu', 'Fr' => 'Fri', 'Sa' => 'Sat', 'Su' => 'Sun'];
 
@@ -52,11 +101,15 @@ class FrontSite
      */
     private array $uiStrings = [];
 
+    private FrontAssets $assets;
+
     public function __construct(
         private FrontKit $kit,
         private ?string $company = null,
         private ?string $basePath = null,
-    ) {}
+    ) {
+        $this->assets = new FrontAssets($kit);
+    }
 
     /**
      * The route prefix the front lives under on every host (config agents.front.prefix).
@@ -446,7 +499,7 @@ class FrontSite
         }
 
         if ($strings['language_name'] === '') {
-            $strings['language_name'] = strtoupper($lang);
+            $strings['language_name'] = self::LANGUAGE_NAMES[$lang] ?? strtoupper($lang);
         }
 
         return $strings;
@@ -488,35 +541,555 @@ class FrontSite
     }
 
     /**
-     * The page body as HTML. Raw HTML is stripped and unsafe links dropped; a link whose
-     * target is a page slug ("[Services](services)") points at that page in the same language.
+     * The page body as HTML. Allowlisted `:::name` fences become kit components (FrontComponents); the rest is
+     * markdown with raw HTML stripped and unsafe links dropped. A link whose target is a page slug
+     * ("[Services](services)") points at that page in the same language; `assets/…` links and images point at the file.
      *
      * @param  array{slug: string, lang: string, body: string}  $page
      */
     public function bodyHtml(array $page): string
     {
-        $html = Str::markdown($page['body'], [
+        return $this->components()->render($page['body'], $page['lang']);
+    }
+
+    /**
+     * Markdown to sanitized HTML, with page-slug and asset links rewritten.
+     */
+    public function markdownHtml(string $markdown, string $lang): string
+    {
+        if (trim($markdown) === '') {
+            return '';
+        }
+
+        $html = Str::markdown($markdown, [
             'html_input' => 'strip',
             'allow_unsafe_links' => false,
         ]);
 
-        return preg_replace_callback(
-            '/href="('.FrontKit::SLUG_PATTERN.')"/',
-            fn (array $match): string => $this->page($match[1], $page['lang']) !== null
-                ? 'href="'.e($this->url($match[1], $page['lang'])).'"'
+        $html = preg_replace_callback(
+            '/href="('.FrontKit::SLUG_PATTERN.')((?:\?[^"#]*)?(?:#[^"]*)?)"/',
+            fn (array $match): string => $this->page($match[1], $lang) !== null
+                ? 'href="'.e($this->url($match[1], $lang).$this->safeSuffix(html_entity_decode($match[2], ENT_QUOTES | ENT_HTML5, 'UTF-8'))).'"'
                 : $match[0],
+            $html,
+        ) ?? $html;
+
+        return preg_replace_callback(
+            '/\b(src|href)="((?:assets\/|asset:)[^"]+)"/',
+            function (array $match): string {
+                $url = $this->assetUrl(html_entity_decode($match[2], ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+
+                return $url !== null ? $match[1].'="'.e($url).'"' : $match[0];
+            },
             $html,
         ) ?? $html;
     }
 
     /**
-     * The page as served to `Accept: text/markdown`: frontmatter and body.
+     * A link target a component may use: http(s), mailto: and tel: URLs, an in-page #hash, a site path (/…), a page
+     * slug (with an optional ?query#hash) or an asset. Null for anything else (javascript:, data:, protocol-relative…).
+     */
+    public function safeHref(string $target, string $lang): ?string
+    {
+        $target = trim($target);
+
+        if ($target === '' || preg_match('/[\x00-\x20\x7f<>"\'`\\\\]/', $target) === 1) {
+            return null;
+        }
+
+        if (preg_match('/^(?:https?:\/\/[^\/?#]+|mailto:[^\/]|tel:\+?[0-9])/i', $target) === 1) {
+            return $target;
+        }
+
+        if (preg_match('/^#[A-Za-z][A-Za-z0-9_-]*$/', $target) === 1) {
+            return $target;
+        }
+
+        if (str_starts_with($target, 'asset:') || str_starts_with($target, 'assets/')) {
+            return $this->assetUrl($target);
+        }
+
+        if (str_starts_with($target, '/') && ! str_starts_with($target, '//') && ! str_contains($target, '..')) {
+            return $target;
+        }
+
+        if (preg_match('/^(?:('.FrontKit::LANGUAGE_PATTERN.')\/)?('.FrontKit::SLUG_PATTERN.')((?:\?[^#]*)?(?:#.*)?)$/', $target, $match) !== 1) {
+            return null;
+        }
+
+        $pageLang = $match[1] !== '' ? $match[1] : $lang;
+
+        return $this->page($match[2], $pageLang) !== null ? $this->url($match[2], $pageLang).$this->safeSuffix($match[3]) : null;
+    }
+
+    /**
+     * Public URL of a company asset ("assets/…" or "asset:…") with a content-hash query, or null when it is not served.
+     */
+    public function assetUrl(string $reference): ?string
+    {
+        $relative = $this->assets->normalize($reference);
+        $resolved = $relative === null ? null : $this->assets->resolve($this->company(), $relative, $this->basePath);
+
+        if ($resolved === null) {
+            return null;
+        }
+
+        return $this->fileUrl('assets/'.$relative).'?v='.$this->assets->version($resolved);
+    }
+
+    /**
+     * Intrinsic width and height of an image asset (SVG: width/height attributes or the viewBox), or null.
      *
-     * @param  array{frontmatter: array<string, mixed>, body: string}  $page
+     * @return array{0: int, 1: int}|null
+     */
+    public function assetSize(string $reference): ?array
+    {
+        $resolved = $this->assets->resolve($this->company(), $reference, $this->basePath);
+
+        return $resolved !== null && $this->assets->isImage($resolved) ? $this->assets->size($resolved) : null;
+    }
+
+    public function assets(): FrontAssets
+    {
+        return $this->assets;
+    }
+
+    public function components(): FrontComponents
+    {
+        return new FrontComponents($this);
+    }
+
+    /**
+     * The page as served to `Accept: text/markdown`: frontmatter and body, with component fences turned into
+     * plain markdown (headings, lists, links) so no `:::` line reaches the reader.
+     *
+     * @param  array{lang?: string, frontmatter: array<string, mixed>, body: string}  $page
      */
     public function markdown(array $page): string
     {
-        return FrontMatter::compose($page['frontmatter'], $page['body']);
+        return FrontMatter::compose($page['frontmatter'], $this->bodyMarkdown($page));
+    }
+
+    /**
+     * The page body as plain markdown (component fences rendered as readable markdown).
+     *
+     * @param  array{lang?: string, body: string}  $page
+     */
+    public function bodyMarkdown(array $page): string
+    {
+        return $this->components()->toMarkdown($page['body'], $page['lang'] ?? $this->defaultLanguage());
+    }
+
+    /**
+     * Hero media from page frontmatter.hero: an image (any served image type; SVG sizes come from the file) or a muted
+     * looping video with a poster, plus an optional kicker, caption and object position ("x% y%" only).
+     *
+     * @param  array{frontmatter: array<string, mixed>}  $page
+     * @return array{image: ?string, width: ?int, height: ?int, mp4: ?string, webm: ?string, poster: ?string, alt: string, kicker: ?string, caption: ?string, position: ?string}|null
+     */
+    public function hero(array $page): ?array
+    {
+        $hero = $page['frontmatter']['hero'] ?? null;
+
+        if (! is_array($hero)) {
+            return null;
+        }
+
+        $asset = fn (string $key): ?string => is_string($hero[$key] ?? null) ? $this->assetUrl($hero[$key]) : null;
+        $image = is_string($hero['image'] ?? null) && $this->assets->isImage($hero['image']) ? $asset('image') : null;
+        $poster = is_string($hero['poster'] ?? null) && $this->assets->isImage($hero['poster']) ? $asset('poster') : null;
+        $mp4 = is_string($hero['mp4'] ?? null) && str_ends_with(strtolower($hero['mp4']), '.mp4') ? $asset('mp4') : null;
+        $webm = is_string($hero['webm'] ?? null) && str_ends_with(strtolower($hero['webm']), '.webm') ? $asset('webm') : null;
+
+        if ($image === null && $poster === null && $mp4 === null && $webm === null) {
+            return null;
+        }
+
+        $size = $image !== null ? $this->assetSize($hero['image']) : ($poster !== null ? $this->assetSize($hero['poster']) : null);
+        $position = $this->text($hero['position'] ?? null);
+
+        return [
+            'image' => $image,
+            'width' => $size[0] ?? null,
+            'height' => $size[1] ?? null,
+            'mp4' => $mp4,
+            'webm' => $webm,
+            'poster' => $poster,
+            'alt' => $this->text($hero['alt'] ?? null) ?? '',
+            'kicker' => $this->text($hero['kicker'] ?? null),
+            'caption' => $this->text($hero['caption'] ?? null),
+            'position' => $position !== null && preg_match(self::HERO_POSITION, $position) === 1 ? $position : null,
+        ];
+    }
+
+    /**
+     * On a home page with hero media, the markdown before the first `## ` heading or `:::` fence is the hero copy
+     * (beside the media); the rest is the page body.
+     *
+     * @return array{0: string, 1: string}
+     */
+    public function splitHomeIntro(string $body): array
+    {
+        if (preg_match('/\A(.*?)(?=^## |^:::)/ms', $body, $match) === 1) {
+            return [trim($match[1]), trim(substr($body, strlen($match[0])))];
+        }
+
+        return [trim($body), ''];
+    }
+
+    /**
+     * The forms declared in facts.forms, by slug.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public function declaredForms(): array
+    {
+        $forms = [];
+
+        foreach (is_array($this->facts()['forms'] ?? null) ? $this->facts()['forms'] : [] as $form) {
+            if (is_array($form) && is_string($form['slug'] ?? null) && preg_match('/^'.FrontKit::SLUG_PATTERN.'$/', $form['slug']) === 1) {
+                $forms[$form['slug']] ??= $form;
+            }
+        }
+
+        return $forms;
+    }
+
+    /**
+     * One form from facts.forms, ready to render: an AIFormFlow embed when its status is `live` (and it has a client),
+     * else a link to the hosted form when there is one. Null when the form is unknown or has neither.
+     *
+     * @return array{slug: string, form: string, name: string, title: ?string, lead: ?string, live: bool, hosted: ?string, client: ?string, theme: string}|null
+     */
+    public function form(string $slug, string $lang): ?array
+    {
+        $form = $this->declaredForms()[$slug] ?? null;
+
+        if ($form === null) {
+            return null;
+        }
+
+        $formId = $this->localizedText($form['form'] ?? null, $lang);
+        $formId = $formId !== null && preg_match('/^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/', $formId) === 1 ? $formId : null;
+        $hosted = $this->localizedText($form['hosted'] ?? null, $lang);
+        $hosted = $hosted !== null && preg_match('/^https:\/\/[^\/?#\s"\'<>]+(?:[\/?#][^\s"\'<>]*)?$/', $hosted) === 1 ? $hosted : null;
+        $client = $this->text($form['client'] ?? null) ?? $this->formClient($hosted);
+        $client = $client !== null && preg_match('/^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/', $client) === 1 ? $client : null;
+        $live = strtolower((string) $this->text($form['status'] ?? null)) === 'live' && $client !== null;
+
+        if (! $live && $hosted === null) {
+            return null;
+        }
+
+        $theme = $this->text($form['theme'] ?? null);
+
+        return [
+            'slug' => $slug,
+            'form' => $formId ?? $slug,
+            'name' => $this->localizedText($form['name'] ?? null, $lang) ?? Str::headline($slug),
+            'title' => $this->localizedText($form['title'] ?? null, $lang),
+            'lead' => $this->localizedText($form['lead'] ?? null, $lang),
+            'live' => $live,
+            'hosted' => $hosted,
+            'client' => $client,
+            'theme' => $theme !== null && in_array($theme, ['light', 'dark', 'auto'], true) ? $theme : 'light',
+        ];
+    }
+
+    /**
+     * The forms a page names in frontmatter.forms, rendered after the article, minus those its body already
+     * places with an inline `:::form` fence.
+     *
+     * @param  array{lang: string, frontmatter: array<string, mixed>, body: string}  $page
+     * @return list<array{slug: string, form: string, name: string, title: ?string, lead: ?string, live: bool, hosted: ?string, client: ?string, theme: string}>
+     */
+    public function embeds(array $page): array
+    {
+        $inline = $this->components()->formSlugs($page['body']);
+        $embeds = [];
+
+        foreach ($this->pageFormSlugs($page) as $slug) {
+            $form = in_array($slug, $inline, true) ? null : $this->form($slug, $page['lang']);
+
+            if ($form !== null) {
+                $embeds[] = $form;
+            }
+        }
+
+        return $embeds;
+    }
+
+    /**
+     * True when the page shows at least one live AIFormFlow embed (after the article or inline), so form.js is needed.
+     *
+     * @param  array{lang: string, frontmatter: array<string, mixed>, body: string}  $page
+     */
+    public function hasLiveForm(array $page): bool
+    {
+        foreach (array_unique([...$this->pageFormSlugs($page), ...$this->components()->formSlugs($page['body'])]) as $slug) {
+            if (($this->form($slug, $page['lang'])['live'] ?? false) === true) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array{frontmatter: array<string, mixed>}  $page
+     * @return list<string>
+     */
+    public function pageFormSlugs(array $page): array
+    {
+        return array_values(array_unique(array_filter(
+            (array) ($page['frontmatter']['forms'] ?? []),
+            fn (mixed $slug): bool => is_string($slug) && preg_match('/^'.FrontKit::SLUG_PATTERN.'$/', $slug) === 1,
+        )));
+    }
+
+    /**
+     * Self-hosted web fonts from facts.fonts.faces (woff2 files under assets/). Nothing loads from a font CDN.
+     *
+     * @return array{faces: list<array{family: string, url: string, weight: string, style: string, stretch: string}>, preload: ?string}
+     */
+    public function fonts(): array
+    {
+        $declared = $this->facts()['fonts'] ?? [];
+        $faces = [];
+        $preload = null;
+
+        foreach (is_array($declared) && is_array($declared['faces'] ?? null) ? $declared['faces'] : [] as $face) {
+            if (! is_array($face)) {
+                continue;
+            }
+
+            $family = $this->text($face['family'] ?? null);
+            $url = is_string($face['src'] ?? null) && str_ends_with(strtolower($face['src']), '.woff2') ? $this->assetUrl($face['src']) : null;
+
+            if ($family === null || $url === null || preg_match('/^[\p{L}\p{N} _-]{1,64}$/u', $family) !== 1) {
+                continue;
+            }
+
+            $faces[] = [
+                'family' => $family,
+                'url' => $url,
+                'weight' => $this->cssToken($face['weight'] ?? null, '400'),
+                'style' => $this->cssToken($face['style'] ?? null, 'normal'),
+                'stretch' => $this->cssToken($face['stretch'] ?? null, 'normal'),
+            ];
+
+            if (($face['preload'] ?? $face['primary'] ?? false) === true) {
+                $preload ??= $url;
+            }
+        }
+
+        return ['faces' => $faces, 'preload' => $preload];
+    }
+
+    /**
+     * Scripts from facts.scripts: company files under assets/ (.js) and AIFormFlow URLs only. A row with
+     * `enabled: false` is skipped.
+     *
+     * @return list<array{src: string, defer: bool, module: bool}>
+     */
+    public function scripts(): array
+    {
+        $scripts = [];
+
+        foreach (is_array($this->facts()['scripts'] ?? null) ? $this->facts()['scripts'] : [] as $script) {
+            $script = is_string($script) ? ['src' => $script] : $script;
+
+            if (! is_array($script) || ($script['enabled'] ?? true) === false) {
+                continue;
+            }
+
+            $src = $this->scriptSrc($script['src'] ?? null);
+
+            if ($src !== null) {
+                $scripts[] = [
+                    'src' => $src,
+                    'defer' => ($script['defer'] ?? true) !== false,
+                    'module' => ($script['module'] ?? false) === true,
+                ];
+            }
+        }
+
+        return $scripts;
+    }
+
+    /**
+     * An allowed script URL: an assets/…js file, or https on an AIFormFlow host. Null for anything else.
+     */
+    public function scriptSrc(mixed $src): ?string
+    {
+        $src = $this->text($src);
+
+        if ($src === null) {
+            return null;
+        }
+
+        if (str_starts_with($src, 'assets/') || str_starts_with($src, 'asset:')) {
+            return str_ends_with(strtolower($src), '.js') ? $this->assetUrl($src) : null;
+        }
+
+        return self::isFormHostUrl($src) ? $src : null;
+    }
+
+    /**
+     * True for an https URL on an AIFormFlow host: one of FORM_HOSTS or a single subdomain label under it
+     * (forms.aiformflow.com, not a.b.aiformflow.com), the same hosts the CSP `https://*.<host>` source matches.
+     */
+    public static function isFormHostUrl(string $url): bool
+    {
+        if (preg_match('/^https:\/\/([a-z0-9.-]+)(?:[\/?#][^\s"\'<>]*)?$/i', $url, $match) !== 1) {
+            return false;
+        }
+
+        $host = strtolower($match[1]);
+
+        foreach (self::FORM_HOSTS as $allowed) {
+            if ($host === $allowed || preg_match('/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.'.preg_quote($allowed, '/').'$/', $host) === 1) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * The company's component CSS (theme/components.css), safe to inline in a <style> element: url() is kept only
+     * for assets (rewritten to their URL), @import is dropped (FrontComponentsCss).
+     */
+    public function componentsCss(): string
+    {
+        $css = $this->kit->componentsCss($this->company(), $this->basePath);
+
+        return $css === null ? '' : (new FrontComponentsCss)->inline($css, fn (string $reference): ?string => $this->assetUrl($reference));
+    }
+
+    /**
+     * Logo from facts.logo (or facts.header.logo): `src` (or `light`), optional `dark`, `alt`. Null keeps the text brand.
+     *
+     * @return array{src: string, dark: ?string, alt: string, width: ?int, height: ?int}|null
+     */
+    public function logo(): ?array
+    {
+        $declared = $this->facts()['logo'] ?? $this->facts()['header']['logo'] ?? null;
+        $declared = is_string($declared) ? ['src' => $declared] : $declared;
+
+        if (! is_array($declared)) {
+            return null;
+        }
+
+        $reference = $declared['src'] ?? $declared['light'] ?? null;
+        $src = is_string($reference) && $this->assets->isImage($reference) ? $this->assetUrl($reference) : null;
+
+        if ($src === null) {
+            return null;
+        }
+
+        $size = $this->assetSize($reference);
+
+        return [
+            'src' => $src,
+            'dark' => is_string($declared['dark'] ?? null) && $this->assets->isImage($declared['dark']) ? $this->assetUrl($declared['dark']) : null,
+            'alt' => $this->text($declared['alt'] ?? null) ?? $this->name(),
+            'width' => $size[0] ?? null,
+            'height' => $size[1] ?? null,
+        ];
+    }
+
+    /**
+     * The header call to action from facts.cta (`label`, `target`, localized per language). A target `#form-<slug>`
+     * stays on the page when the page shows that form, else points at the first page that does. Null keeps the
+     * kit's Call button.
+     *
+     * @param  array{slug: string, lang: string, frontmatter: array<string, mixed>, body: string}  $page
+     * @return array{label: string, href: string}|null
+     */
+    public function cta(array $page): ?array
+    {
+        $declared = $this->facts()['cta'] ?? null;
+
+        if (! is_array($declared)) {
+            return null;
+        }
+
+        $lang = $page['lang'];
+        $label = $this->localizedText($declared['label'] ?? null, $lang);
+        $target = $this->localizedText($declared['target'] ?? $declared['href'] ?? null, $lang);
+
+        if ($label === null || $target === null) {
+            return null;
+        }
+
+        if (preg_match('/^#form-('.FrontKit::SLUG_PATTERN.')$/', $target, $match) === 1) {
+            return ['label' => $label, 'href' => $this->formHref($match[1], $page)];
+        }
+
+        $href = $this->safeHref($target, $lang);
+
+        return $href === null ? null : ['label' => $label, 'href' => $href];
+    }
+
+    /**
+     * Footer links from facts.footer.legal (privacy, terms…): each a page slug or a URL, with a label.
+     *
+     * @return list<array{label: string, url: string}>
+     */
+    public function legalLinks(string $lang): array
+    {
+        return $this->links($this->facts()['footer']['legal'] ?? [], $lang);
+    }
+
+    /**
+     * Footer columns from facts.footer.columns (`title` + `links`), shown before the kit's contact column.
+     *
+     * @return list<array{title: string, links: list<array{label: string, url: string}>}>
+     */
+    public function footerColumns(string $lang): array
+    {
+        $columns = [];
+
+        foreach (is_array($this->facts()['footer']['columns'] ?? null) ? $this->facts()['footer']['columns'] : [] as $column) {
+            if (! is_array($column)) {
+                continue;
+            }
+
+            $title = $this->localizedText($column['title'] ?? null, $lang);
+            $links = $this->links($column['links'] ?? [], $lang);
+
+            if ($title !== null || $links !== []) {
+                $columns[] = ['title' => $title ?? '', 'links' => $links];
+            }
+        }
+
+        return $columns;
+    }
+
+    /**
+     * Well-known icons that exist under assets/icons/, keyed by their front-root file name.
+     *
+     * @return array<string, string>
+     */
+    public function icons(): array
+    {
+        $icons = [];
+
+        foreach (self::WELL_KNOWN_ICONS as $name => $path) {
+            if ($this->assets->resolve($this->company(), $path, $this->basePath) !== null) {
+                $icons[$name] = $this->fileUrl($name);
+            }
+        }
+
+        return $icons;
+    }
+
+    public function phoneHref(): ?string
+    {
+        $phone = $this->phone();
+
+        return $phone !== null ? preg_replace('/[^\d+]/', '', $phone) : null;
     }
 
     /**
@@ -525,40 +1098,93 @@ class FrontSite
      * @param  array{slug: string, lang: string, path: string, frontmatter: array<string, mixed>, body: string}  $page
      * @return array<string, mixed>
      */
-    public function viewData(array $page): array
+    public function viewData(array $page, ?string $cspNonce = null): array
     {
         $lang = $page['lang'];
         $frontmatter = $page['frontmatter'];
         $layout = $frontmatter['layout'] ?? 'page';
+        $layout = in_array($layout, self::LAYOUTS, true) ? $layout : 'page';
         $canonical = $this->text($frontmatter['canonical'] ?? null);
         $phone = $this->phone();
+        $hero = $this->hero($page);
+        $heroHtml = '';
+
+        if ($layout === 'home' && $hero !== null) {
+            [$intro, $rest] = $this->splitHomeIntro($page['body']);
+            $heroHtml = $this->bodyHtml([...$page, 'body' => $intro]);
+            $html = $this->bodyHtml([...$page, 'body' => $rest]);
+        } else {
+            $html = $this->bodyHtml($page);
+        }
 
         return [
             'lang' => $lang,
             'title' => $this->text($frontmatter['title'] ?? null) ?? $this->name(),
             'description' => $this->text($frontmatter['description'] ?? null) ?? '',
             'noindex' => ! $this->isIndexable($page),
-            'layout' => in_array($layout, self::LAYOUTS, true) ? $layout : 'page',
+            'layout' => $layout,
             'canonical' => $canonical !== null && Str::startsWith($canonical, ['https://', 'http://']) ? $canonical : $this->url($page['slug'], $lang),
             'alternates' => $this->alternates($page['slug']),
             'tokens' => $this->tokensCss(),
-            'html' => $this->bodyHtml($page),
+            'componentsCss' => $this->componentsCss(),
+            'html' => $html,
+            'heroHtml' => $heroHtml,
+            'hero' => $hero,
             't' => $this->strings($lang),
             'name' => $this->name(),
             'legalName' => $this->legalName() ?? $this->name(),
             'homeUrl' => $this->url('home', $lang),
+            'logo' => $this->logo(),
+            'cta' => $this->cta($page),
             'navigation' => $this->navigation($lang, $page['slug']),
             'languageLinks' => $this->languageLinks($page['slug'], $lang),
             'phone' => $phone,
-            'phoneHref' => $phone !== null ? preg_replace('/[^\d+]/', '', $phone) : null,
+            'phoneHref' => $this->phoneHref(),
             'email' => $this->email(),
             'address' => $this->publishesAddress() && $this->address() !== null ? implode(', ', $this->address()) : null,
             'cities' => $this->cities(),
             'services' => array_column($this->services($lang), 'name'),
             'hours' => $this->localizedHours($lang),
             'social' => $this->social(),
+            'footerColumns' => $this->footerColumns($lang),
+            'legalLinks' => $this->legalLinks($lang),
+            'icons' => $this->icons(),
+            'fonts' => $this->fonts(),
+            'embeds' => $this->embeds($page),
+            'embedScript' => $this->hasLiveForm($page) ? self::EMBED_SCRIPT : null,
+            'scripts' => $this->scripts(),
+            'cspNonce' => $cspNonce,
             'year' => now()->year,
         ];
+    }
+
+    /**
+     * The Content-Security-Policy sent with a page: scripts only from the site, the page's nonce and AIFormFlow;
+     * frames and connections only to AIFormFlow; no plugins, no foreign base URL.
+     */
+    public static function contentSecurityPolicy(string $nonce): string
+    {
+        $forms = [];
+
+        foreach (self::FORM_HOSTS as $host) {
+            array_push($forms, 'https://'.$host, 'https://*.'.$host);
+        }
+
+        $forms = implode(' ', $forms);
+
+        return implode('; ', [
+            "default-src 'self'",
+            "script-src 'self' 'nonce-{$nonce}' {$forms}",
+            "style-src 'self' 'unsafe-inline'",
+            "img-src 'self' data: {$forms}",
+            "font-src 'self'",
+            "media-src 'self'",
+            "frame-src {$forms}",
+            "connect-src 'self' {$forms}",
+            "form-action 'self' {$forms}",
+            "base-uri 'self'",
+            "object-src 'none'",
+        ]);
     }
 
     /**
@@ -638,5 +1264,102 @@ class FrontSite
         $values = is_array($values) ? $values : [$values];
 
         return array_values(array_filter(array_map(fn (mixed $value): ?string => $this->text($value), $values)));
+    }
+
+    /**
+     * A text that may be given once or per language ({en: …, es: …}).
+     */
+    public function localizedText(mixed $value, string $lang): ?string
+    {
+        if (is_array($value)) {
+            $value = $value[$lang] ?? $value[$this->defaultLanguage()] ?? reset($value);
+        }
+
+        return $this->text($value);
+    }
+
+    /**
+     * Where a `#form-<slug>` link goes from this page: the hash alone when the page shows the form, else the first
+     * page in the language that does (falling back to the home page).
+     *
+     * @param  array{slug: string, lang: string, frontmatter: array<string, mixed>, body: string}  $page
+     */
+    public function formHref(string $slug, array $page): string
+    {
+        $hash = '#form-'.$slug;
+        $shows = fn (array $candidate): bool => in_array($slug, [...$this->pageFormSlugs($candidate), ...$this->components()->formSlugs($candidate['body'])], true);
+
+        if ($shows($page)) {
+            return $hash;
+        }
+
+        foreach ($this->pages() as $candidate) {
+            if ($candidate['lang'] === $page['lang'] && $shows($candidate)) {
+                return $this->url($candidate['slug'], $candidate['lang']).$hash;
+            }
+        }
+
+        return $this->url('home', $page['lang']).$hash;
+    }
+
+    /**
+     * Keep a ?query and #hash made of plain characters; drop anything else.
+     */
+    private function safeSuffix(string $suffix): string
+    {
+        return $suffix === '' || preg_match('/^(?:\?[A-Za-z0-9_\-=&%.+]*)?(?:#[A-Za-z0-9_\-]*)?$/', $suffix) === 1 ? $suffix : '';
+    }
+
+    /**
+     * Links from facts (a list of `slug`, or of {label, href|slug}).
+     *
+     * @return list<array{label: string, url: string}>
+     */
+    private function links(mixed $links, string $lang): array
+    {
+        $resolved = [];
+
+        foreach (is_array($links) ? $links : [] as $entry) {
+            $entry = is_string($entry) ? ['slug' => $entry] : $entry;
+
+            if (! is_array($entry)) {
+                continue;
+            }
+
+            $target = $this->localizedText($entry['href'] ?? $entry['url'] ?? $entry['slug'] ?? null, $lang);
+            $url = $target !== null ? $this->safeHref($target, $lang) : null;
+            $page = $target !== null ? $this->page($target, $lang) : null;
+            $label = $this->localizedText($entry['label'] ?? null, $lang)
+                ?? ($page !== null ? ($this->text($page['frontmatter']['nav_label'] ?? null) ?? $this->text($page['frontmatter']['title'] ?? null)) : null);
+
+            if ($url !== null && $label !== null) {
+                $resolved[] = ['label' => $label, 'url' => $url];
+            }
+        }
+
+        return $resolved;
+    }
+
+    private function cssToken(mixed $value, string $default): string
+    {
+        $value = $this->text($value);
+
+        return $value !== null && preg_match('/^[A-Za-z0-9.% -]{1,40}$/', $value) === 1 ? $value : $default;
+    }
+
+    /**
+     * The AIFormFlow client of a hosted form URL on <client>.aiff.dev, or null.
+     */
+    private function formClient(?string $hosted): ?string
+    {
+        $host = $hosted !== null ? parse_url($hosted, PHP_URL_HOST) : null;
+
+        if (! is_string($host) || ! str_ends_with(strtolower($host), '.aiff.dev')) {
+            return null;
+        }
+
+        $client = substr(strtolower($host), 0, -strlen('.aiff.dev'));
+
+        return $client !== '' && ! str_contains($client, '.') ? $client : null;
     }
 }

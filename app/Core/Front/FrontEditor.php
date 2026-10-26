@@ -18,13 +18,28 @@ use Symfony\Component\Yaml\Exception\ParseException;
  * first save of a file also records what was there before, so the original stays restorable.
  *
  * Request input never becomes a path: pages are named by a validated slug and language, every file is one of
- * pages/<slug>.<lang>.md, facts.yaml or theme/tokens.css, and every write is checked to stay inside fronts/<company>.
+ * pages/<slug>.<lang>.md, facts.yaml, theme/tokens.css, theme/components.css or a FrontAssets-validated path under
+ * assets/, and every write is checked to stay inside fronts/<company>.
  */
 class FrontEditor
 {
     public const FACTS_FILE = 'facts.yaml';
 
     public const THEME_FILE = 'theme/tokens.css';
+
+    public const COMPONENTS_CSS_FILE = 'theme/components.css';
+
+    /**
+     * Largest asset asset_put writes (decoded bytes).
+     */
+    public const ASSET_MAX_BYTES = 5_000_000;
+
+    /**
+     * Asset types the editor writes: images, fonts, video, icons and the web manifest. Scripts only arrive through git.
+     *
+     * @var list<string>
+     */
+    public const ASSET_TYPES = ['svg', 'png', 'jpg', 'jpeg', 'webp', 'avif', 'gif', 'mp4', 'webm', 'woff2', 'ico', 'webmanifest'];
 
     /**
      * The facts the editor writes; everything else in facts.yaml is kept as it is.
@@ -45,6 +60,8 @@ class FrontEditor
         private FrontThemeTokens $tokens,
         private FrontFactsYaml $factsYaml,
         private FrontContentHistory $history,
+        private FrontAssets $assets,
+        private FrontComponentsCss $componentsCss,
     ) {}
 
     public function company(): string
@@ -122,12 +139,13 @@ class FrontEditor
     /**
      * Creates a page. Refused when the page already exists or the site has no such language.
      *
-     * @param  array{title: string, description: string, body?: ?string, nav_label?: ?string, cities?: list<string>}  $fields
+     * @param  array{title: string, description: string, body?: ?string, nav_label?: ?string, cities?: list<string>, layout?: string, hero?: ?array<string, mixed>, forms?: list<string>}  $fields
      * @return array{path: string, saved: bool, lint: array{ok: bool, errors: list<array{rule: string, file: string, message: string}>, warnings: list<array{rule: string, file: string, message: string}>}}
      */
     public function createPage(string $slug, string $lang, array $fields, Actor $actor): array
     {
         $file = $this->pageFile($slug, $lang);
+        $this->assertPageFields($fields);
 
         return $this->locked(function () use ($slug, $lang, $file, $fields, $actor): array {
             $this->ensureNewPage($slug, $lang);
@@ -139,15 +157,16 @@ class FrontEditor
     }
 
     /**
-     * Saves a page's title, description, navigation label, cities and body. Every other frontmatter key (layout,
-     * services, jsonld, keys the editor does not know) is kept.
+     * Saves a page's title, description, navigation label, cities and body, and its layout, hero and forms when given.
+     * Every other frontmatter key (services, jsonld, keys the editor does not know) is kept.
      *
-     * @param  array{title: string, description: string, body?: ?string, nav_label?: ?string, cities?: list<string>}  $fields
+     * @param  array{title: string, description: string, body?: ?string, nav_label?: ?string, cities?: list<string>, layout?: string, hero?: ?array<string, mixed>, forms?: list<string>}  $fields
      * @return array{path: string, saved: bool, lint: array{ok: bool, errors: list<array{rule: string, file: string, message: string}>, warnings: list<array{rule: string, file: string, message: string}>}}
      */
     public function savePage(string $slug, string $lang, array $fields, Actor $actor): array
     {
         $file = $this->pageFile($slug, $lang);
+        $this->assertPageFields($fields);
 
         return $this->locked(function () use ($slug, $lang, $file, $fields, $actor): array {
             $this->ensurePageExists($slug, $lang);
@@ -251,6 +270,86 @@ class FrontEditor
             $this->ensureDeclared($values, $css);
 
             return $this->withLint($this->writeFile(self::THEME_FILE, $this->tokens->apply((string) $css, $values), $actor));
+        });
+    }
+
+    /**
+     * The company's component stylesheet (theme/components.css), or null when the front has none.
+     */
+    public function componentsCss(): ?string
+    {
+        return $this->kit->componentsCss($this->company());
+    }
+
+    /**
+     * Replaces theme/components.css. Refused when the CSS could leave its <style> element or load anything but a
+     * file under assets/ (FrontComponentsCss::problem).
+     *
+     * @return array{path: string, saved: bool, lint: array{ok: bool, errors: list<array{rule: string, file: string, message: string}>, warnings: list<array{rule: string, file: string, message: string}>}}
+     */
+    public function saveComponentsCss(string $css, Actor $actor): array
+    {
+        $css = str_replace(["\r\n", "\r"], "\n", $css);
+        $problem = $this->componentsCss->problem($css);
+
+        if ($problem !== null) {
+            throw new AgentRefusedException($problem, 'invalid_params', 'Style the kit classes (front-card, front-card--featured…) with plain CSS; load images with url("assets/…").');
+        }
+
+        return $this->locked(fn (): array => $this->withLint($this->writeFile(self::COMPONENTS_CSS_FILE, rtrim($css)."\n", $actor)));
+    }
+
+    /**
+     * Writes one file under assets/ (images, fonts, video, icons, the web manifest; no scripts) and commits it to the
+     * content history. The content must match its extension and stay under ASSET_MAX_BYTES.
+     *
+     * @return array{path: string, saved: bool, url: ?string}
+     */
+    public function putAsset(string $path, string $content, Actor $actor): array
+    {
+        $relative = $this->assets->normalize($path);
+        $extension = strtolower(pathinfo((string) $relative, PATHINFO_EXTENSION));
+
+        if ($relative === null || ! in_array($extension, self::ASSET_TYPES, true)) {
+            throw new AgentRefusedException(
+                'An asset is a path under assets/ such as icons/robot.svg, of one of these types: '.implode(', ', self::ASSET_TYPES).'.',
+                'path_refused',
+            );
+        }
+
+        if ($content === '' || strlen($content) > self::ASSET_MAX_BYTES) {
+            throw new AgentRefusedException('An asset must be between 1 byte and '.(self::ASSET_MAX_BYTES / 1_000_000).' MB.', 'invalid_params');
+        }
+
+        if (! $this->contentMatches($extension, $content)) {
+            throw new AgentRefusedException("The content is not a .{$extension} file.", 'invalid_params', 'Send the file itself, base64-encoded.');
+        }
+
+        if ($extension === 'svg' && ($active = $this->svgActiveContent($content)) !== null) {
+            throw new AgentRefusedException(
+                "The SVG contains {$active}; an SVG asset may not carry scripts, on…= event attributes, javascript: URLs, foreignObject or entity declarations.",
+                'invalid_params',
+                'Export the SVG as plain shapes and paths (most editors have an "optimized" or "plain SVG" option).',
+            );
+        }
+
+        $file = 'assets/'.$relative;
+
+        return $this->locked(function () use ($file, $content, $actor): array {
+            $absolute = $this->resolvePath($file);
+            $path = $this->frontRoot().'/'.$file;
+
+            if (is_file($absolute) && hash_file('sha256', $absolute) === hash('sha256', $content)) {
+                return ['path' => $path, 'saved' => false, 'url' => $this->assetUrl($file)];
+            }
+
+            $note = (is_file($absolute) ? 'Replaced ' : 'Added ').$file;
+            File::ensureDirectoryExists(dirname($absolute));
+            $this->resolvePath($file);
+            File::put($absolute, $content);
+            $this->history->commit($this->company(), $note, $actor->label(), $file);
+
+            return ['path' => $path, 'saved' => true, 'url' => $this->assetUrl($file)];
         });
     }
 
@@ -399,7 +498,14 @@ class FrontEditor
      */
     private function resolve(string $file): string
     {
-        $file = $this->editableFile($file);
+        return $this->resolvePath($this->editableFile($file));
+    }
+
+    /**
+     * The absolute path of a validated front-relative file (see resolve()).
+     */
+    private function resolvePath(string $file): string
+    {
         $frontDirectory = $this->kit->directory($this->company());
 
         if (is_link($frontDirectory)) {
@@ -435,14 +541,15 @@ class FrontEditor
     }
 
     /**
-     * Only these files are edited here: pages/<slug>.<lang>.md, facts.yaml and theme/tokens.css.
+     * Only these files are edited here: pages/<slug>.<lang>.md, facts.yaml, theme/tokens.css and theme/components.css
+     * (assets go through putAsset()).
      */
     private function editableFile(string $file): string
     {
-        $pattern = '/^(?:pages\/'.FrontKit::SLUG_PATTERN.'\.'.FrontKit::LANGUAGE_PATTERN.'\.md|facts\.yaml|theme\/tokens\.css)\z/';
+        $pattern = '/^(?:pages\/'.FrontKit::SLUG_PATTERN.'\.'.FrontKit::LANGUAGE_PATTERN.'\.md|facts\.yaml|theme\/tokens\.css|theme\/components\.css)\z/';
 
         if (preg_match($pattern, $file) !== 1) {
-            throw new AgentRefusedException('The editor edits pages, facts.yaml and theme/tokens.css only.', 'path_refused');
+            throw new AgentRefusedException('The editor edits pages, facts.yaml, theme/tokens.css and theme/components.css only.', 'path_refused');
         }
 
         return $file;
@@ -521,6 +628,30 @@ class FrontEditor
             }
         }
 
+        if (array_key_exists('layout', $fields)) {
+            $frontmatter['layout'] = $fields['layout'];
+        }
+
+        if (array_key_exists('hero', $fields)) {
+            $hero = array_filter((array) $fields['hero'], fn (mixed $value): bool => is_string($value) && trim($value) !== '');
+
+            if ($hero === []) {
+                unset($frontmatter['hero']);
+            } else {
+                $frontmatter['hero'] = array_map('trim', $hero);
+            }
+        }
+
+        if (array_key_exists('forms', $fields)) {
+            $forms = array_values(array_unique($fields['forms']));
+
+            if ($forms === []) {
+                unset($frontmatter['forms']);
+            } else {
+                $frontmatter['forms'] = $forms;
+            }
+        }
+
         if (array_key_exists('cities', $fields)) {
             $cities = array_values(array_unique(array_filter(array_map('trim', $fields['cities']), fn (string $city): bool => $city !== '')));
 
@@ -532,6 +663,131 @@ class FrontEditor
         }
 
         return $frontmatter;
+    }
+
+    /**
+     * The layout, hero and forms a save may set: a known layout; hero keys image/poster/mp4/webm naming files under
+     * assets/ of the right kind, alt/kicker/caption text and position "x% y%"; forms that are slugs in facts.forms.
+     *
+     * @param  array<string, mixed>  $fields
+     */
+    private function assertPageFields(array $fields): void
+    {
+        if (array_key_exists('layout', $fields) && ! in_array($fields['layout'], FrontSite::LAYOUTS, true)) {
+            throw new AgentRefusedException('layout must be one of: '.implode(', ', FrontSite::LAYOUTS).'.', 'invalid_params');
+        }
+
+        if (array_key_exists('hero', $fields) && $fields['hero'] !== null) {
+            $hero = $fields['hero'];
+            $allowed = ['image', 'poster', 'mp4', 'webm', 'alt', 'kicker', 'caption', 'position'];
+
+            if (! is_array($hero) || array_diff(array_keys($hero), $allowed) !== []) {
+                throw new AgentRefusedException('hero takes only: '.implode(', ', $allowed).'.', 'invalid_params');
+            }
+
+            foreach ($hero as $key => $value) {
+                if ($value !== null && (! is_string($value) || mb_strlen($value) > 300)) {
+                    throw new AgentRefusedException("hero.{$key} must be text of at most 300 characters.", 'invalid_params');
+                }
+            }
+
+            $kinds = ['image' => FrontAssets::IMAGE_TYPES, 'poster' => FrontAssets::IMAGE_TYPES, 'mp4' => ['mp4'], 'webm' => ['webm']];
+
+            foreach ($kinds as $key => $extensions) {
+                $value = trim((string) ($hero[$key] ?? ''));
+
+                if ($value === '') {
+                    continue;
+                }
+
+                $relative = $this->assets->normalize($value);
+
+                if ($relative === null || ! in_array(strtolower(pathinfo($relative, PATHINFO_EXTENSION)), $extensions, true)) {
+                    throw new AgentRefusedException("hero.{$key} must name a .".implode('/.', $extensions).' file under assets/.', 'invalid_params', 'Upload it with asset_put first, then use assets/<path>.');
+                }
+
+                if ($this->assets->resolve($this->company(), $relative) === null) {
+                    throw new AgentRefusedException("hero.{$key}: assets/{$relative} does not exist.", 'not_found', 'Upload it with asset_put first.');
+                }
+            }
+
+            $position = trim((string) ($hero['position'] ?? ''));
+
+            if ($position !== '' && preg_match(FrontSite::HERO_POSITION, $position) !== 1) {
+                throw new AgentRefusedException('hero.position must look like "50% 30%".', 'invalid_params');
+            }
+        }
+
+        if (array_key_exists('forms', $fields)) {
+            $declared = array_keys((new FrontSite($this->kit, $this->company()))->declaredForms());
+
+            if (! is_array($fields['forms'])) {
+                throw new AgentRefusedException('forms must be a list of form slugs.', 'invalid_params');
+            }
+
+            foreach ($fields['forms'] as $form) {
+                if (! is_string($form) || ! in_array($form, $declared, true)) {
+                    throw new AgentRefusedException(
+                        sprintf('Form "%s" is not declared in facts.forms.', is_string($form) ? $form : gettype($form)),
+                        'invalid_params',
+                        $declared === [] ? 'Declare the form under forms: in facts.yaml first.' : 'Declared forms: '.implode(', ', $declared).'.',
+                    );
+                }
+            }
+        }
+    }
+
+    /**
+     * Whether the bytes look like the type their extension names.
+     */
+    private function contentMatches(string $extension, string $content): bool
+    {
+        return match ($extension) {
+            'svg' => preg_match('/^\s*(?:<\?xml[^>]*>\s*)?(?:<!--.*?-->\s*)*(?:<!DOCTYPE[^>]*>\s*)?<svg[\s>]/is', $content) === 1,
+            'webmanifest' => is_array(json_decode($content, true)),
+            'woff2' => str_starts_with($content, 'wOF2'),
+            'ico' => str_starts_with($content, "\x00\x00\x01\x00"),
+            'webm' => str_starts_with($content, "\x1A\x45\xDF\xA3"),
+            'mp4', 'avif' => substr($content, 4, 4) === 'ftyp',
+            default => in_array((new \finfo(FILEINFO_MIME_TYPE))->buffer($content), match ($extension) {
+                'png' => ['image/png'],
+                'jpg', 'jpeg' => ['image/jpeg'],
+                'webp' => ['image/webp'],
+                'gif' => ['image/gif'],
+                default => [],
+            }, true),
+        };
+    }
+
+    /**
+     * What makes the SVG able to run code when opened, or null when it is plain drawing. Checked on the raw bytes and
+     * again with character references decoded, since attribute values like &#106;avascript: are decoded by the parser.
+     */
+    private function svgActiveContent(string $svg): ?string
+    {
+        $gap = '[\s\x00-\x1f]*';
+        $javascript = '/'.implode($gap, str_split('javascript')).$gap.':/i';
+        $checks = [
+            'a <script> element' => '/<\s*(?:[\w.-]+:)?script\b/i',
+            'a <foreignObject> element' => '/<\s*(?:[\w.-]+:)?foreignObject\b/i',
+            'an on…= event attribute' => '/[\s"\'\/](?:[\w.-]+:)?on[a-z]+\s*=/i',
+            'a javascript: URL' => $javascript,
+            'an entity declaration' => '/<!ENTITY\b/i',
+        ];
+        $decoded = html_entity_decode($svg, ENT_QUOTES | ENT_XML1 | ENT_HTML5, 'UTF-8');
+
+        foreach ($checks as $label => $pattern) {
+            if (preg_match($pattern, $svg) === 1 || preg_match($pattern, $decoded) === 1) {
+                return $label;
+            }
+        }
+
+        return null;
+    }
+
+    private function assetUrl(string $file): ?string
+    {
+        return (new FrontSite($this->kit, $this->company()))->assetUrl($file);
     }
 
     private function body(?string $body): string

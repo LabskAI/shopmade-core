@@ -9,7 +9,7 @@ afterEach(fn () => FrontFixture::cleanup());
  */
 function frontJsonLd(string $html): array
 {
-    preg_match_all('#<script type="application/ld\+json">(.*?)</script>#s', $html, $matches);
+    preg_match_all('#<script type="application/ld\+json"(?: nonce="[^"]+")?>(.*?)</script>#s', $html, $matches);
 
     return array_map(fn (string $json): array => json_decode($json, true), $matches[1]);
 }

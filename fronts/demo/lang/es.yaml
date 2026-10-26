@@ -19,3 +19,10 @@ days:
   Fr: vie
   Sa: sáb
   Su: dom
+contact: Contacto
+legal: Legal
+open_form: Abrir el formulario
+open_form_page: Abrir el formulario en su propia página
+form_error: El formulario no cargó.
+form_error_help: Ábralo en su propia página o contáctenos. No se pierde nada.
+prefer_to_talk: ¿Prefiere hablar?

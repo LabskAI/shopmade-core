@@ -4,13 +4,13 @@
 
 name: Demo Home Services
 legal_name: Demo Home Services LLC
-phone: "+1 239-555-0142"
-email: hello@demo-home-services.example
+phone: "+1 555-010-0142"
+email: hello@example.com
 
 cities:
-  - Naples
-  - Estero
-  - Bonita Springs
+  - Riverton
+  - Oak Hollow
+  - Pine Ridge
 
 services:
   - slug: house-cleaning
@@ -56,6 +56,38 @@ never_write:
 
 social: []
 
+# Header button. A target "#form-<slug>" opens that form: on this page when it shows it, else on the page that does.
+cta:
+  label:
+    en: Book a visit
+    es: Reservar una visita
+  target: "#form-contact"
+
+# AIFormFlow forms. status: live embeds the form (form.js loads only on pages that show one); otherwise a hosted
+# link is shown when there is one. Pages place a form with frontmatter forms: [contact] (after the page) or an
+# inline :::form slug="contact" fence.
+forms:
+  - slug: contact
+    name:
+      en: Book a visit
+      es: Reservar una visita
+    lead:
+      en: Tell us the address and what needs cleaning. We answer the same day.
+      es: Díganos la dirección y qué hay que limpiar. Respondemos el mismo día.
+    status: live
+    client: shopmade-demo
+    form:
+      en: contact-en
+      es: contact-es
+
+# Company scripts: files under assets/ (or AIFormFlow URLs) only.
+scripts:
+  - src: assets/motion.js
+
+logo:
+  src: assets/logo.svg
+  alt: Demo Home Services
+
 # robots.txt and its Content-Signal line follow this policy.
 discovery:
   ai_search: true
@@ -64,6 +96,5 @@ discovery:
 # The street address is published only when publish is true.
 address:
   publish: false
-  locality: Naples
-  region: FL
+  locality: Riverton
   country: US

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 32" width="220" height="32" role="img" aria-label="Demo Home Services">
+  <rect x="0" y="4" width="24" height="24" rx="5" fill="#146b57"/>
+  <path d="M6 17 12 11l6 6v6H6z" fill="#ffffff"/>
+  <text x="32" y="22" font-family="Georgia, serif" font-size="17" font-weight="700" fill="#1f2a28">Demo Home Services</text>
+</svg>

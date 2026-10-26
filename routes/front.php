@@ -2,6 +2,7 @@
 
 use App\Core\Front\FrontKit;
 use App\Core\Front\FrontSite;
+use App\Http\Controllers\Front\AssetController;
 use App\Http\Controllers\Front\DiscoveryController;
 use App\Http\Controllers\Front\PageController;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -23,6 +24,11 @@ $frontRoutes = function (): void {
     Route::get('sitemap.xml', [DiscoveryController::class, 'sitemap'])->name('sitemap');
     Route::get('llms.txt', [DiscoveryController::class, 'llms'])->name('llms');
     Route::get('llms-full.txt', [DiscoveryController::class, 'llmsFull'])->name('llms-full');
+    Route::get('assets/{path}', [AssetController::class, 'show'])->where('path', '.+')->name('asset');
+
+    foreach (array_keys(FrontSite::WELL_KNOWN_ICONS) as $icon) {
+        Route::get($icon, [AssetController::class, 'wellKnown'])->defaults('name', $icon)->name('icon.'.$icon);
+    }
 
     Route::get('/', [PageController::class, 'home'])->name('home');
     Route::get('{lang}', [PageController::class, 'language'])

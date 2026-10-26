@@ -28,6 +28,7 @@ class FrontLinter
         private FrontKit $kit,
         private FrontDiscovery $discovery,
         private FrontJsonLd $jsonLd,
+        private FrontAssets $assets,
     ) {}
 
     /**
@@ -62,6 +63,7 @@ class FrontLinter
             ...$this->checkParity($pages, $languages),
             ...$this->checkStrings($company, $basePath, $front, $neverWrite),
             ...$this->checkSkills($company, $basePath, $front),
+            ...$this->checkKit($company, $basePath, $front, $facts, $pages),
             ...$this->checkDiscovery($company, $basePath, $front),
         );
 
@@ -216,6 +218,10 @@ class FrontLinter
 
         if (is_array($address) && array_key_exists('publish', $address) && ! is_bool($address['publish'])) {
             $error('facts.address.publish must be true or false.');
+        }
+
+        foreach ($this->kitFactProblems($facts) as $message) {
+            $error($message);
         }
 
         return [$facts, $issues];
@@ -489,6 +495,212 @@ class FrontLinter
             if (! is_string($description) || trim($description) === '') {
                 $issues[] = $this->issue('warning', 'skills', $path, 'Skill frontmatter needs a description.');
             }
+        }
+
+        return $issues;
+    }
+
+    /**
+     * Shape of the front-kit facts: forms, scripts, fonts, cta, logo and footer.
+     *
+     * @param  array<string, mixed>  $facts
+     * @return list<string>
+     */
+    private function kitFactProblems(array $facts): array
+    {
+        $problems = [];
+        $forms = $facts['forms'] ?? null;
+
+        if ($forms !== null && (! is_array($forms) || ! array_is_list($forms))) {
+            $problems[] = 'facts.forms must be a list of {slug, name, status, client, form, hosted} entries.';
+        }
+
+        foreach (is_array($forms) && array_is_list($forms) ? $forms : [] as $index => $form) {
+            $slug = is_array($form) ? ($form['slug'] ?? null) : null;
+
+            if (! is_string($slug) || preg_match('/^'.FrontKit::SLUG_PATTERN.'$/', $slug) !== 1) {
+                $problems[] = sprintf('facts.forms[%d] needs a lowercase slug such as "contact".', $index);
+
+                continue;
+            }
+
+            $status = $form['status'] ?? null;
+
+            if ($status !== null && ! in_array($status, ['live', 'draft', 'off'], true)) {
+                $problems[] = sprintf('facts.forms[%d].status must be live, draft or off (found "%s").', $index, $this->show($status));
+            }
+
+            foreach (is_array($form['hosted'] ?? null) ? $form['hosted'] : [$form['hosted'] ?? null] as $hosted) {
+                if ($hosted !== null && (! is_string($hosted) || preg_match('/^https:\/\/[^\/?#\s"\'<>]+(?:[\/?#][^\s"\'<>]*)?$/', $hosted) !== 1)) {
+                    $problems[] = sprintf('facts.forms[%d].hosted must be an https URL.', $index);
+                }
+            }
+
+            $client = $form['client'] ?? null;
+
+            if ($client !== null && (! is_string($client) || preg_match('/^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/', $client) !== 1)) {
+                $problems[] = sprintf('facts.forms[%d].client must be an AIFormFlow client id (letters, digits, - and _).', $index);
+            }
+
+            foreach (is_array($form['form'] ?? null) ? $form['form'] : [$form['form'] ?? null] as $formId) {
+                if ($formId !== null && (! is_string($formId) || preg_match('/^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/', $formId) !== 1)) {
+                    $problems[] = sprintf('facts.forms[%d].form must be an AIFormFlow form id (letters, digits, - and _), or one per language.', $index);
+                }
+            }
+
+            if ($status === 'live' && $client === null && ! is_string($form['hosted'] ?? null)) {
+                $problems[] = sprintf('facts.forms[%d] is live but has no client (or <client>.aiff.dev hosted URL), so it cannot embed.', $index);
+            }
+        }
+
+        $scripts = $facts['scripts'] ?? null;
+
+        if ($scripts !== null && (! is_array($scripts) || ! array_is_list($scripts))) {
+            $problems[] = 'facts.scripts must be a list of {src, defer?, module?, enabled?} entries.';
+        }
+
+        foreach (is_array($scripts) && array_is_list($scripts) ? $scripts : [] as $index => $script) {
+            $src = is_array($script) ? ($script['src'] ?? null) : $script;
+
+            if (! is_string($src) || trim($src) === '') {
+                $problems[] = sprintf('facts.scripts[%d] needs a src: an assets/….js file or an https://aiformflow.com URL.', $index);
+            } elseif (! (str_starts_with($src, 'assets/') || str_starts_with($src, 'asset:')) && ! FrontSite::isFormHostUrl($src)) {
+                $problems[] = sprintf('facts.scripts[%d].src "%s" is not allowed: only assets/….js files and https://aiformflow.com URLs load.', $index, $src);
+            } elseif (! FrontSite::isFormHostUrl($src) && ! str_ends_with(strtolower($src), '.js')) {
+                $problems[] = sprintf('facts.scripts[%d].src "%s" must be a .js file.', $index, $src);
+            }
+        }
+
+        $fonts = $facts['fonts'] ?? null;
+
+        if ($fonts !== null && (! is_array($fonts) || ! is_array($fonts['faces'] ?? []))) {
+            $problems[] = 'facts.fonts must be a mapping with a faces list ({family, src, weight?, style?}).';
+        }
+
+        foreach (is_array($fonts) && is_array($fonts['faces'] ?? null) ? $fonts['faces'] : [] as $index => $face) {
+            if (! is_array($face) || ! is_string($face['family'] ?? null) || ! is_string($face['src'] ?? null) || ! str_ends_with(strtolower($face['src']), '.woff2')) {
+                $problems[] = sprintf('facts.fonts.faces[%d] needs a family and a src .woff2 file under assets/.', $index);
+            }
+        }
+
+        foreach (['cta' => 'a mapping with label and target', 'footer' => 'a mapping with columns and/or legal'] as $key => $shape) {
+            if (array_key_exists($key, $facts) && ! is_array($facts[$key])) {
+                $problems[] = sprintf('facts.%s must be %s.', $key, $shape);
+            }
+        }
+
+        return $problems;
+    }
+
+    /**
+     * Front-kit rules on pages and files: unknown component fences and attributes, forms named by pages, hero media,
+     * referenced assets, scripts, fonts, logo and theme/components.css.
+     *
+     * @param  array<string, mixed>  $facts
+     * @param  list<array{slug: string, lang: string, file: string, frontmatter: array<string, mixed>, body: string}>  $pages
+     * @return list<array{level: string, rule: string, file: string, message: string}>
+     */
+    private function checkKit(string $company, ?string $basePath, string $front, array $facts, array $pages): array
+    {
+        $issues = [];
+        $site = new FrontSite($this->kit, $company, $basePath);
+        $components = $site->components();
+        $formSlugs = array_keys($site->declaredForms());
+        $missing = fn (string $reference): bool => $this->assets->resolve($company, $reference, $basePath) === null;
+
+        foreach ($pages as $page) {
+            $file = $page['file'];
+            $frontmatter = $page['frontmatter'];
+
+            foreach ($components->unknownNames($page['body']) as $name) {
+                $issues[] = $this->issue('warning', 'components', $file, sprintf(
+                    'Unknown component ":::%s" is shown as plain text. Components: %s.',
+                    $name,
+                    implode(', ', array_keys(FrontComponents::NAMES)),
+                ));
+            }
+
+            foreach ($components->unknownAttributes($page['body']) as [$fence, $attribute]) {
+                $issues[] = $this->issue('warning', 'components', $file, sprintf(
+                    'Component ":::%s" does not take "%s"; it is ignored. It takes: %s.',
+                    $fence,
+                    $attribute,
+                    implode(', ', FrontComponents::ATTRIBUTES[FrontComponents::NAMES[$fence]]),
+                ));
+            }
+
+            foreach ([...(array) ($frontmatter['forms'] ?? []), ...$components->formSlugs($page['body'])] as $form) {
+                if (! is_string($form) || ! in_array($form, $formSlugs, true)) {
+                    $issues[] = $this->issue('warning', 'forms', $file, sprintf(
+                        'Form "%s" is not a slug in facts.forms (%s), so it is not shown.',
+                        $this->show($form),
+                        implode(', ', $formSlugs),
+                    ));
+                }
+            }
+
+            if (array_key_exists('hero', $frontmatter)) {
+                $hero = $frontmatter['hero'];
+
+                if (! is_array($hero) || array_intersect(['image', 'poster', 'mp4', 'webm'], array_keys($hero)) === []) {
+                    $issues[] = $this->issue('error', 'hero', $file, 'Frontmatter hero needs an image (or a video: mp4/webm with a poster) under assets/.');
+                } elseif (array_key_exists('position', $hero) && (! is_string($hero['position']) || preg_match(FrontSite::HERO_POSITION, $hero['position']) !== 1)) {
+                    $issues[] = $this->issue('warning', 'hero', $file, sprintf('Frontmatter hero.position "%s" is ignored: use "x%% y%%", e.g. "50%% 30%%".', $this->show($hero['position'])));
+                }
+
+                foreach (is_array($hero) ? ['image', 'poster', 'mp4', 'webm'] : [] as $key) {
+                    if (is_string($hero[$key] ?? null) && $missing($hero[$key])) {
+                        $issues[] = $this->issue('error', 'assets', $file, sprintf('Frontmatter hero.%s "%s" is not a file under assets/.', $key, $hero[$key]));
+                    }
+                }
+            }
+
+            $references = $components->assetReferences($page['body']);
+
+            if (preg_match_all('/\]\(((?:assets\/|asset:)[^)\s]+)\)/', $page['body'], $matches) > 0) {
+                foreach ($matches[1] as $reference) {
+                    $references[] = ['a markdown link', $reference];
+                }
+            }
+
+            foreach ($references as [$where, $reference]) {
+                if ($missing($reference)) {
+                    $issues[] = $this->issue('error', 'assets', $file, sprintf('Asset "%s" in %s is not a file under assets/ (or not a served type).', $reference, $where));
+                }
+            }
+        }
+
+        $factsFile = $front.'/facts.yaml';
+
+        foreach (is_array($facts['scripts'] ?? null) ? $facts['scripts'] : [] as $index => $script) {
+            $src = is_array($script) ? ($script['src'] ?? null) : $script;
+
+            if (is_string($src) && (str_starts_with($src, 'assets/') || str_starts_with($src, 'asset:')) && $missing($src)) {
+                $issues[] = $this->issue('error', 'assets', $factsFile, sprintf('facts.scripts[%d].src "%s" is not a file under assets/.', $index, $src));
+            }
+        }
+
+        foreach (is_array($facts['fonts']['faces'] ?? null) ? $facts['fonts']['faces'] : [] as $index => $face) {
+            if (is_array($face) && is_string($face['src'] ?? null) && $missing($face['src'])) {
+                $issues[] = $this->issue('error', 'assets', $factsFile, sprintf('facts.fonts.faces[%d].src "%s" is not a file under assets/.', $index, $face['src']));
+            }
+        }
+
+        $logo = $facts['logo'] ?? $facts['header']['logo'] ?? null;
+
+        foreach (is_array($logo) ? ['src', 'light', 'dark'] : ($logo !== null ? ['src'] : []) as $key) {
+            $reference = is_array($logo) ? ($logo[$key] ?? null) : $logo;
+
+            if (is_string($reference) && $missing($reference)) {
+                $issues[] = $this->issue('error', 'assets', $factsFile, sprintf('facts.logo "%s" is not a file under assets/.', $reference));
+            }
+        }
+
+        $css = $this->kit->componentsCss($company, $basePath);
+        $problem = $css === null ? null : (new FrontComponentsCss)->problem($css);
+
+        if ($problem !== null) {
+            $issues[] = $this->issue('error', 'components_css', $front.'/theme/components.css', $problem.' The offending parts are dropped when the page is served.');
         }
 
         return $issues;

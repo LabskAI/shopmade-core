@@ -161,7 +161,7 @@ class FrontDiscovery
                 'URL: '.$site->url($page['slug'], $page['lang']),
                 'Language: '.$page['lang'],
                 '',
-                $page['body'],
+                $site->bodyMarkdown($page),
             );
         }
 

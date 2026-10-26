@@ -1,6 +1,12 @@
 <header class="site-header">
     <div class="wrap header-row">
-        <a class="brand" href="{{ $homeUrl }}">{{ $name }}</a>
+        <a class="brand" href="{{ $homeUrl }}">
+            @if ($logo)
+                <img class="brand-logo" src="{{ $logo['src'] }}" alt="{{ $logo['alt'] }}"@if ($logo['width']) width="{{ $logo['width'] }}" height="{{ $logo['height'] }}"@endif>
+            @else
+                {{ $name }}
+            @endif
+        </a>
 
         @if (count($navigation) > 1)
             <nav class="site-nav" aria-label="{{ $t['menu'] }}">
@@ -22,7 +28,9 @@
             </nav>
         @endif
 
-        @if ($phone)
+        @if ($cta)
+            <a class="btn btn-primary header-cta" href="{{ $cta['href'] }}">{{ $cta['label'] }}</a>
+        @elseif ($phone)
             <a class="call" href="tel:{{ $phoneHref }}">{{ $t['call'] }} {{ $phone }}</a>
         @endif
     </div>

@@ -1,6 +1,19 @@
 <footer class="site-footer">
     <div class="wrap">
         <div class="footer-grid">
+            @foreach ($footerColumns as $column)
+                <section>
+                    @if ($column['title'] !== '')
+                        <h2>{{ $column['title'] }}</h2>
+                    @endif
+                    <ul>
+                        @foreach ($column['links'] as $link)
+                            <li><a href="{{ $link['url'] }}">{{ $link['label'] }}</a></li>
+                        @endforeach
+                    </ul>
+                </section>
+            @endforeach
+
             <section>
                 <h2>{{ $name }}</h2>
                 <ul>
@@ -62,5 +75,14 @@
         </div>
 
         <p class="legal">&copy; {{ $year }} {{ $legalName }}</p>
+        @if ($legalLinks !== [])
+            <nav class="legal-links" aria-label="{{ $t['legal'] }}">
+                <ul>
+                    @foreach ($legalLinks as $link)
+                        <li><a href="{{ $link['url'] }}">{{ $link['label'] }}</a></li>
+                    @endforeach
+                </ul>
+            </nav>
+        @endif
     </div>
 </footer>
