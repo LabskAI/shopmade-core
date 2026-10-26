@@ -6,14 +6,14 @@ use Illuminate\Support\Facades\Hash;
 
 it('promotes the named user to super admin and leaves others alone', function () {
     $owner = User::factory()->admin()->create(['email' => 'owner@example.com']);
-    $kim = User::factory()->admin()->create(['email' => 'kim@example.com']);
+    $admin = User::factory()->admin()->create(['email' => 'admin@example.com']);
 
     $this->artisan('user:promote-super-admin', ['email' => 'owner@example.com'])
         ->assertSuccessful()
         ->expectsOutput('Promoted owner@example.com to super_admin.');
 
     expect($owner->fresh()->role)->toBe(UserRole::SuperAdmin)
-        ->and($kim->fresh()->role)->toBe(UserRole::Admin);
+        ->and($admin->fresh()->role)->toBe(UserRole::Admin);
 });
 
 it('fails when the user does not exist', function () {

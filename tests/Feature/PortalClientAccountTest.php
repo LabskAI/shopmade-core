@@ -11,7 +11,7 @@ it('shows the client site card on portal home', function () {
         ->get(route('portal.home'))
         ->assertOk()
         ->assertSee('Harbor Point Plaza')
-        ->assertSee('100 Example Ave, Naples, FL')
+        ->assertSee('100 Example Ave, Riverton, ST 00000')
         ->assertSee('Example Property Management, LLC')
         ->assertSee('Dana Example')
         ->assertSee('manager@example.com')

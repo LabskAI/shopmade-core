@@ -99,7 +99,7 @@ it('refuses to read or save through a symlinked front folder', function () {
     expect(app(FrontKit::class)->read('demo', 'pages/services.en.md'))->toBeNull()
         ->and(fn () => $this->editor->savePage('services', 'en', ['title' => 'A', 'description' => 'B', 'body' => 'C'], $this->actor))
         ->toThrow(AgentRefusedException::class)
-        ->and(fn () => $this->editor->saveFacts(['phone' => '+1 239 555 0100'], $this->actor))
+        ->and(fn () => $this->editor->saveFacts(['phone' => '+1 555 555 0100'], $this->actor))
         ->toThrow(AgentRefusedException::class);
 
     expect(file_get_contents($outside.'/pages/services.en.md'))->toBe($before);
@@ -109,10 +109,10 @@ it('writes theme tokens and facts, keeping the facts it does not know', function
     $token = array_key_first($this->editor->themeTokens());
 
     $this->editor->saveTheme([$token => '#123456'], $this->actor);
-    $this->editor->saveFacts(['phone' => '+1 239 555 0100'], $this->actor);
+    $this->editor->saveFacts(['phone' => '+1 555 555 0100'], $this->actor);
 
     expect($this->editor->themeTokens()[$token])->toBe('#123456')
-        ->and($this->editor->facts()['phone'])->toBe('+1 239 555 0100')
+        ->and($this->editor->facts()['phone'])->toBe('+1 555 555 0100')
         ->and($this->editor->facts()['name'])->not->toBeEmpty();
 });
 

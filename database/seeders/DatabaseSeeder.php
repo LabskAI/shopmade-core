@@ -76,9 +76,9 @@ class DatabaseSeeder extends Seeder
     {
         return Customer::query()->create([
             'name' => 'Harbor Point Plaza',
-            'phone' => '(239) 555-0195',
+            'phone' => '(555) 555-0195',
             'email' => 'manager@example.com',
-            'address' => '100 Example Ave, Naples, FL',
+            'address' => '100 Example Ave, Riverton, ST 00000',
             'billing_name' => 'Example Property Management, LLC',
             'primary_contact_name' => 'Dana Example',
             'primary_contact_email' => 'manager@example.com',
