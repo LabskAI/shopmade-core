@@ -18,8 +18,8 @@ class PageCreateTool extends SiteTool
 
     public function description(): string
     {
-        return 'Create a new page version in one of the site languages. A new language version of an existing page copies its layout. '
-            .'The page is live at once.';
+        return 'Create a new page version in one of the site languages. A new language version of an existing page copies its layout and forms '
+            .'unless given. The body may use the kit components (see page_save). The page is live at once.';
     }
 
     public function inputSchema(): array
