@@ -359,3 +359,23 @@ it('escapes customer names in portal invite mail', function () {
         ->assertSeeInText('Set your password')
         ->assertSeeInText('72 hours');
 });
+
+it('shows the admin the set-password link only when email is not delivered', function (string $mailer, bool $shown) {
+    Mail::fake();
+    config(['mail.default' => $mailer]);
+    $customer = Customer::factory()->create();
+
+    $response = $this->actingAs(User::factory()->admin()->create())
+        ->post(route('customers.portal-users.store', $customer), ['email' => 'pat@example.com']);
+
+    $link = session('portal_invite_link');
+    expect($link !== null)->toBe($shown);
+
+    if ($shown) {
+        expect($link)->toContain('/portal/password/');
+        $this->get($response->headers->get('Location'))->assertSee($link);
+    }
+})->with([
+    'log mailer' => ['log', true],
+    'smtp mailer' => ['smtp', false],
+]);

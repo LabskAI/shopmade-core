@@ -7,6 +7,11 @@ if [ ! -f .env ]; then
     cp .env.example .env
 fi
 
+# A one-off `php artisan …` command (key:generate --show, a worker, the scheduler) runs without the setup below.
+if [ "${1:-}" = "php" ] && [ "${2:-}" = "artisan" ]; then
+    SKIP_SETUP=1
+fi
+
 if [ "${SKIP_SETUP:-0}" != "1" ]; then
     # The production image ships vendor/ and the Vite build; the bind-mounted dev setup installs them here.
     if [ "${SHOPMADE_IMAGE:-}" != "production" ]; then
@@ -40,6 +45,9 @@ if [ "${SKIP_SETUP:-0}" != "1" ]; then
     # The site content lives in content/ (a volume in the production image), apart from the code: copy the starter
     # site in on first boot. Existing content is never touched.
     php artisan front:install
+
+    # Index the in-repo plugins (plugins/*/plugin.json) so they show under Admin → Plugins.
+    php artisan plugin:sync
 
     if [ "${SEED_DEMO:-0}" = "1" ]; then
         php <<'PHP'
