@@ -33,3 +33,12 @@ jobs:
       - uses: actions/checkout@v4
 
       - run: docker build --target production -t shopmade-core:ci .
+
+      # The same image with packages baked in, the way install.sh builds it (reuses the layers above).
+      - run: docker build --target production --build-arg SHOPMADE_PACKAGES=jobs,crm -t shopmade-core:ci-packages .
+
+      - run: docker run --rm --entrypoint php shopmade-core:ci-packages artisan about --only=environment
+      - run: docker run --rm --entrypoint sh shopmade-core:ci-packages -c 'test -d vendor/labskai/shopmade-jobs && test -d vendor/labskai/shopmade-crm && ! test -d vendor/pestphp'
+
+      # The queue worker and scheduler run as www-data through setpriv (docker/serve.sh); they must see the container env.
+      - run: docker run --rm -e APP_KEY=ci-key -e DB_PASSWORD=ci-pass --entrypoint setpriv shopmade-core:ci --reuid=www-data --regid=www-data --init-groups -- sh -c 'test "$(id -un)" = www-data && test "$APP_KEY" = ci-key && test "$DB_PASSWORD" = ci-pass'

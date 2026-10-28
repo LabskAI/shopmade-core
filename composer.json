@@ -10,6 +10,11 @@
         "shopmade"
     ],
     "license": "MIT",
+    "homepage": "https://shopmade.pro",
+    "support": {
+        "issues": "https://github.com/LabskAI/shopmade-core/issues",
+        "source": "https://github.com/LabskAI/shopmade-core"
+    },
     "require": {
         "php": "^8.4",
         "laravel/framework": "^13.17",
@@ -68,8 +73,7 @@
         ],
         "post-create-project-cmd": [
             "@php artisan key:generate --ansi",
-            "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
-            "@php artisan migrate --graceful --ansi"
+            "@php artisan shopmade:install --ansi"
         ],
         "pre-package-uninstall": [
             "Illuminate\\Foundation\\ComposerScripts::prePackageUninstall"
