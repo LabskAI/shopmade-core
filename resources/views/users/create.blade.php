@@ -19,7 +19,7 @@
                     <x-input type="password" name="password" required />
                 </x-field>
                 <x-field label="Role" name="role" :error="$errors->first('role')">
-                    <x-select name="role" :options="$roles->mapWithKeys(fn ($r) => [$r->value => $r->label()])" :selected="old('role')" required />
+                    <x-select name="role" :options="$roles->mapWithKeys(fn ($r) => [$r->value => $r->label()])" :selected="old('role', \App\Enums\UserRole::User->value)" required />
                 </x-field>
             </div>
             <div class="mt-6 flex justify-start gap-2">
