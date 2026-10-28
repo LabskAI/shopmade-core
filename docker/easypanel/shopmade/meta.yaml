@@ -1,12 +1,12 @@
 name: Shopmade
 description:
-  Shopmade is an open-source website and customer system for a small business,
-  built on Laravel. It serves the public website, an admin for the owner and
-  staff, and a client portal for the business's customers. Pages, facts and the
-  theme are files with their own git history, so every save can be restored.
-  An MCP server with OAuth lets Claude or another AI assistant read and edit the
-  site, and features such as jobs, invoicing or a shop are added as Laravel
-  packages.
+  Shopmade is your website, jobs board and office, made for the way your shop
+  works. The open-source core (MIT) serves the public website, an admin for the
+  owner and staff, and a client portal for the business's customers. Pages,
+  facts and the theme are files with their own git history, so every save can
+  be restored. An MCP server with OAuth lets Claude or another AI assistant read
+  and edit the site, and features such as jobs, invoicing, a CRM or a shop are
+  added as open-source Laravel packages.
 instructions:
   After the first deploy, open the app service's Console in Easypanel and run
   `php artisan user:create-owner you@example.com "Your Name"`. It prints a
