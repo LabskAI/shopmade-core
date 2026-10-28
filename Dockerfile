@@ -49,7 +49,7 @@ CMD ["php", "artisan", "queue:work", "database", "--sleep=1", "--tries=3", "--ti
 
 # Self-contained image for a registry or a PaaS (Easypanel, Coolify, …): code, vendor and the Vite build are baked in,
 # nginx serves port 8080. Keep storage/ and content/ (the site content) on volumes, and set APP_KEY so a restart keeps sessions valid.
-# Run the same image with `php artisan queue:work database` and `php artisan schedule:work` for the worker and scheduler.
+# The queue worker and scheduler run in the same container; set RUN_WORKERS=0 to run them as their own containers instead.
 FROM base AS production
 
 RUN apt-get update && apt-get install -y --no-install-recommends nginx \
@@ -61,7 +61,11 @@ COPY docker/serve.sh /usr/local/bin/serve.sh
 
 COPY . .
 
+# Feature packages to bake in, e.g. --build-arg SHOPMADE_PACKAGES="labskai/shopmade-jobs labskai/shopmade-invoicing".
+ARG SHOPMADE_PACKAGES=""
+
 RUN composer install --no-interaction --prefer-dist --no-dev --optimize-autoloader \
+    && if [ -n "$SHOPMADE_PACKAGES" ]; then composer require --no-interaction --update-no-dev --optimize-autoloader $SHOPMADE_PACKAGES; fi \
     && npm ci --no-audit --no-fund \
     && npm run build \
     && rm -rf node_modules \
