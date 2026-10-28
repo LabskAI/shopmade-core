@@ -11,37 +11,57 @@ Core ships:
 - An MCP server (`/mcp/agents`) with OAuth 2.1, so Claude can read and edit the site.
 - A plugin system for small in-repo features (`plugins/`) and a hook API for Composer packages ([docs/packages.md](docs/packages.md)).
 
-## Run it
+## Install
+
+### On your computer, with Composer
+
+You need PHP 8.4+, Composer and Docker.
 
 ```bash
-cp .env.example .env
-docker compose up --build
+composer create-project labskai/shopmade-core mysite
+cd mysite
+docker compose up -d --build
 docker compose exec app php artisan user:create-owner you@example.com "Your Name"
 ```
 
+`create-project` asks which public packages to include (jobs, invoicing, shop, CRM, AI client) and whether this is a local development install. Run `php artisan shopmade:install` later to add more, or `php artisan shopmade:install --packages=jobs,invoicing` to skip the questions.
+
+No PHP on the machine? Run Composer in Docker instead: `docker run --rm -it -v "$PWD":/app -w /app composer create-project --ignore-platform-reqs labskai/shopmade-core mysite`.
+
 Open [http://localhost:8000/login](http://localhost:8000/login) and sign in with the printed password. The public site is at [http://localhost:8000/site](http://localhost:8000/site); set `AGENTS_FRONT_HOST` to serve it at the root of its own domain, and `AGENTS_COMPANY` to pick the folder under `content/`.
 
-The stack starts with `APP_ENV=production` and `APP_DEBUG=false`. For local development set `APP_ENV=local` and `APP_DEBUG=true` in `.env` (this also installs the dev dependencies and allows localhost OAuth callbacks).
+A plain `git clone` starts with `APP_ENV=production` and `APP_DEBUG=false`; set `APP_ENV=local` and `APP_DEBUG=true` in `.env` for development (this also installs the dev dependencies and allows localhost OAuth callbacks).
 
 For sample data instead, start with `SEED_DEMO=1 docker compose up --build`. Every demo account (`owner@`, `admin@`, `staff@`, `client@shopmade.test`) has the password `password`, so never seed a public install.
 
 The first start runs `composer install`, `npm ci && npm run build` and the migrations. Postgres is on `localhost:5433` (`shopmade` / `shopmade`).
 
-## Deploy
+### On a server, with one command
 
-`compose.yaml` bind-mounts the checkout, which suits a server you manage by hand and local work. For a registry or a PaaS (Easypanel, Coolify, …) build the self-contained image instead:
+On a fresh Ubuntu or Debian server, point your domain's DNS at it and run:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/LabskAI/shopmade-core/main/install.sh | sudo bash -s -- \
+    --domain site.example.com --owner-email you@example.com --packages jobs,invoicing
+```
+
+[`install.sh`](install.sh) installs Docker if needed, downloads core to `/opt/shopmade/src`, writes the keys to `/opt/shopmade/.env`, builds the image with the packages you picked and starts it with Postgres and Caddy (automatic HTTPS). It prints the owner's password and the MCP connector URL. Leave out `--domain` to try it over plain HTTP on port 8080. Run it again to update; your settings, database and content stay. `/opt/shopmade/compose` runs `docker compose` on the install (`/opt/shopmade/compose logs -f app`).
+
+### On Easypanel, Coolify or another PaaS
+
+Deploy the image `ghcr.io/labskai/shopmade-core` (published for every release), or build it from this repo; the Dockerfile's last stage is the production image:
 
 ```bash
 docker build --target production -t shopmade-core .
+docker build --target production --build-arg SHOPMADE_PACKAGES="labskai/shopmade-jobs" -t mysite .   # with packages
 ```
 
-It bakes in the code, `vendor/` and the asset build, and serves HTTP on port 8080. Give it:
+It bakes in the code, `vendor/` and the asset build, and serves HTTP on port 8080, with the queue worker and scheduler in the same container (`RUN_WORKERS=0` turns them off if you run them as their own containers). Give it:
 
 - `APP_KEY` (from `php artisan key:generate --show`), `APP_URL` and the `DB_*` settings as environment variables;
-- volumes on `/var/www/shopmade/storage` and `/var/www/shopmade/content` (the website content lives there, with its own git history; the first boot copies the starter site in);
-- a second container from the same image running `php artisan queue:work database` with `SKIP_SETUP=1`, and a third running `php artisan schedule:work` with `SKIP_SETUP=1`.
+- volumes on `/var/www/shopmade/storage` and `/var/www/shopmade/content` (the website content lives there, with its own git history; the first boot copies the starter site in).
 
-Migrations run when the web container starts.
+Migrations run when the container starts. The Easypanel template is in [`docker/easypanel/`](docker/easypanel/).
 
 ### Upgrading a site that lived in `fronts/`
 
@@ -49,11 +69,11 @@ Before `content/`, the live site was `fronts/<company>/`, usually on a volume mo
 
 ## Connect Claude
 
-Add `https://<your-host>/mcp/agents` as a custom connector in Claude. Sign in as an admin when Claude asks; the connector then reads (`operator`) and edits (`director`) the website. Every save is live, kept in the page history and committed to the git history in `content/`. Connectors are listed and revoked under **Admin → Connectors**.
+Add `https://<your-host>/mcp/agents` as a custom connector in Claude. From Claude Code on the same machine as a local install, run `claude mcp add --transport http shopmade http://localhost:8000/mcp/agents` (local installs allow its localhost sign-in callback). Sign in as an admin when Claude asks; the connector then reads (`operator`) and edits (`director`) the website. Every save is live, kept in the page history and committed to the git history in `content/`. Connectors are listed and revoked under **Admin → Connectors**.
 
 ## Add a feature
 
-Install a feature package with Composer, then run its migrations and rebuild the assets so its Tailwind classes are compiled:
+Pick packages at install time (above), or install one later with Composer, then run its migrations and rebuild the assets so its Tailwind classes are compiled:
 
 ```bash
 docker compose exec app composer require vendor/shopmade-example
