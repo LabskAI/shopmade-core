@@ -46,19 +46,17 @@ class PortalUserController extends Controller
         if ($user->mustSetPassword()) {
             $version = $user->issuePasswordInvite();
 
-            Mail::to($user)->send(new PortalInviteMail(
-                $user,
-                $customer,
-                URL::temporarySignedRoute(
-                    'portal.password.create',
-                    now()->addHours($hours),
-                    ['user' => $user, 'v' => $version],
-                ),
-                $hours,
-            ));
+            $link = URL::temporarySignedRoute(
+                'portal.password.create',
+                now()->addHours($hours),
+                ['user' => $user, 'v' => $version],
+            );
+
+            Mail::to($user)->send(new PortalInviteMail($user, $customer, $link, $hours));
 
             return redirect()->route('customers.show', $customer)
-                ->with('status', "Portal invite sent. The set-password link expires in {$hours} hours.");
+                ->with('status', "Portal invite sent. The set-password link expires in {$hours} hours.")
+                ->with('portal_invite_link', $this->mailIsDelivered() ? null : $link);
         }
 
         Mail::to($user)->send(new PortalAccessGrantedMail($user, $customer));
@@ -73,6 +71,14 @@ class PortalUserController extends Controller
         $customer->portalUsers()->detach($user->id);
 
         return redirect()->route('customers.show', $customer)->with('status', 'Portal access removed.');
+    }
+
+    /**
+     * False when the mailer only logs or keeps messages (the default install), so the admin is shown the link to pass on.
+     */
+    private function mailIsDelivered(): bool
+    {
+        return ! in_array(config('mail.default'), ['log', 'array'], true);
     }
 
     private function inviteTtlHours(): int
