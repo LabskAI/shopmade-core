@@ -4,5 +4,5 @@ The Shopmade template for [easypanel-io/templates](https://github.com/easypanel-
 folder to `templates/shopmade/` in a fork of that repo, add `assets/logo.png` (square logo mark) and
 `assets/screenshot.png` (the admin with real content), run `npm run build`, and open a PR.
 
-Bump `appServiceImage` in `meta.yaml` to the newest `ghcr.io/labskai/shopmade-core` tag and add a `changeLog` entry
+Submit it only after `v0.1.0` is tagged and `ghcr.io/labskai/shopmade-core:0.1.0` is public, since `meta.yaml` defaults to that image. Bump `appServiceImage` in `meta.yaml` to the newest `ghcr.io/labskai/shopmade-core` tag and add a `changeLog` entry
 whenever you update it there.

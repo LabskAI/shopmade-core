@@ -61,11 +61,11 @@ COPY docker/serve.sh /usr/local/bin/serve.sh
 
 COPY . .
 
-# Feature packages to bake in, e.g. --build-arg SHOPMADE_PACKAGES="labskai/shopmade-jobs labskai/shopmade-invoicing".
+# Public feature packages to bake in, by short name (config/shopmade.php), e.g. --build-arg SHOPMADE_PACKAGES=jobs,invoicing.
 ARG SHOPMADE_PACKAGES=""
 
 RUN composer install --no-interaction --prefer-dist --no-dev --optimize-autoloader \
-    && if [ -n "$SHOPMADE_PACKAGES" ]; then composer require --no-interaction --update-no-dev --optimize-autoloader $SHOPMADE_PACKAGES; fi \
+    && if [ -n "$SHOPMADE_PACKAGES" ]; then php artisan shopmade:install --packages="$SHOPMADE_PACKAGES" --no-dev --no-interaction; fi \
     && npm ci --no-audit --no-fund \
     && npm run build \
     && rm -rf node_modules \
