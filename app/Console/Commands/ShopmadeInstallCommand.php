@@ -73,7 +73,8 @@ class ShopmadeInstallCommand extends Command
 
         foreach ($entries as $entry) {
             if (! in_array($entry['repository'], $known, true)) {
-                $repositories[str_replace('/', '-', $entry['package'])] = ['type' => 'vcs', 'url' => $entry['repository']];
+                // no-api: clone over https instead of the GitHub API, which rate-limits shared IPs and then falls back to ssh.
+                $repositories[str_replace('/', '-', $entry['package'])] = ['type' => 'vcs', 'url' => $entry['repository'], 'no-api' => true];
             }
         }
 

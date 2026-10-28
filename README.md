@@ -19,7 +19,7 @@ You need PHP 8.4+, Composer and Docker.
 
 ```bash
 composer create-project labskai/shopmade-core mysite dev-main \
-    --repository='{"type":"vcs","url":"https://github.com/LabskAI/shopmade-core"}'
+    --repository='{"type":"vcs","url":"https://github.com/LabskAI/shopmade-core","no-api":true}'
 cd mysite
 docker compose up -d --build
 docker compose exec app php artisan user:create-owner you@example.com "Your Name"
@@ -60,6 +60,7 @@ docker build --target production --build-arg SHOPMADE_PACKAGES=jobs,invoicing -t
 It bakes in the code, `vendor/` and the asset build, and serves HTTP on port 8080, with the queue worker and scheduler in the same container (`RUN_WORKERS=0` turns them off if you run them as their own containers). Give it:
 
 - `APP_KEY` (from `php artisan key:generate --show`), `APP_URL` and the `DB_*` settings as environment variables;
+- `AGENTS_OAUTH_ALLOW_LOOPBACK=true` if Claude Code or another desktop MCP client should connect (they sign in through an `http://localhost` callback; `install.sh` and the Easypanel template set it);
 - volumes on `/var/www/shopmade/storage` and `/var/www/shopmade/content` (the website content lives there, with its own git history; the first boot copies the starter site in).
 
 Migrations run when the container starts. The Easypanel template is in [`docker/easypanel/`](docker/easypanel/).
@@ -70,7 +71,7 @@ Before `content/`, the live site was `fronts/<company>/`, usually on a volume mo
 
 ## Connect Claude
 
-Add `https://<your-host>/mcp/agents` as a custom connector in Claude. From Claude Code on the same machine as a local install, run `claude mcp add --transport http shopmade http://localhost:8000/mcp/agents` (local installs allow its localhost sign-in callback). Sign in as an admin when Claude asks; the connector then reads (`operator`) and edits (`director`) the website. Every save is live, kept in the page history and committed to the git history in `content/`. Connectors are listed and revoked under **Admin → Connectors**.
+Add `https://<your-host>/mcp/agents` as a custom connector in Claude. From Claude Code on the same machine as a local install, run `claude mcp add --transport http shopmade http://localhost:8000/mcp/agents` (local installs allow its localhost sign-in callback). For a server, run the same command with `https://<your-host>/mcp/agents`; that needs `AGENTS_OAUTH_ALLOW_LOOPBACK=true`, which `install.sh` and the Easypanel template set. Sign in as an admin when Claude asks; the connector then reads (`operator`) and edits (`director`) the website. Every save is live, kept in the page history and committed to the git history in `content/`. Connectors are listed and revoked under **Admin → Connectors**.
 
 ## Add a feature
 

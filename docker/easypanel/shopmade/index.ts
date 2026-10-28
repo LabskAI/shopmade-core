@@ -19,6 +19,7 @@ export function generate(input: Input): Output {
         `APP_KEY=${appKey}`,
         `APP_URL=https://$(PRIMARY_DOMAIN)`,
         `APP_ORG_NAME=${input.orgName}`,
+        `AGENTS_OAUTH_ALLOW_LOOPBACK=true`,
         `DB_CONNECTION=pgsql`,
         `DB_HOST=$(PROJECT_NAME)_${input.databaseServiceName}`,
         `DB_PORT=5432`,
