@@ -27,8 +27,8 @@ it('requires the packages named in --packages from their GitHub repos', function
     $repositories = json_decode(File::get(base_path('composer.json')), true)['repositories'];
 
     expect($repositories)->toMatchArray([
-        'labskai-shopmade-jobs' => ['type' => 'vcs', 'url' => 'https://github.com/LabskAI/shopmade-jobs'],
-        'labskai-shopmade-invoicing' => ['type' => 'vcs', 'url' => 'https://github.com/LabskAI/shopmade-invoicing'],
+        'labskai-shopmade-jobs' => ['type' => 'vcs', 'url' => 'https://github.com/LabskAI/shopmade-jobs', 'no-api' => true],
+        'labskai-shopmade-invoicing' => ['type' => 'vcs', 'url' => 'https://github.com/LabskAI/shopmade-invoicing', 'no-api' => true],
     ]);
 });
 
