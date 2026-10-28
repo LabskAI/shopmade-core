@@ -8,6 +8,7 @@
 # With --domain, Caddy serves the site over HTTPS on ports 80 and 443 (point the domain's DNS at this server first).
 # Without it, the site is plain HTTP on port 8080 of this server, for a quick try.
 # Run it again to update: it pulls the code, rebuilds the image and keeps your settings, data and content.
+# Options you leave out on a rerun keep their saved value (including the domain; --no-domain switches back to HTTP).
 #
 set -euo pipefail
 
@@ -15,6 +16,7 @@ DIR=/opt/shopmade
 REF=main
 REPO=https://github.com/LabskAI/shopmade-core.git
 DOMAIN=""
+NO_DOMAIN=0
 OWNER_EMAIL=""
 OWNER_NAME="Owner"
 PACKAGES=""
@@ -24,7 +26,8 @@ usage() {
     sed -n '3,10p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//'
     cat <<'TXT'
 Options:
-  --domain HOST        Serve https://HOST with an automatic certificate
+  --domain HOST        Serve https://HOST with an automatic certificate (saved for reruns)
+  --no-domain          Forget the saved domain and serve plain HTTP on port 8080
   --owner-email EMAIL  Create the first owner account and print its password
   --owner-name NAME    Owner's name (default: Owner)
   --org-name NAME      Business name shown in the admin (default: Shopmade)
@@ -37,6 +40,7 @@ TXT
 while [ $# -gt 0 ]; do
     case "$1" in
         --domain) DOMAIN="$2"; shift 2 ;;
+        --no-domain) NO_DOMAIN=1; shift ;;
         --owner-email) OWNER_EMAIL="$2"; shift 2 ;;
         --owner-name) OWNER_NAME="$2"; shift 2 ;;
         --org-name) ORG_NAME="$2"; shift 2 ;;
@@ -83,24 +87,22 @@ else
     git clone -q --depth 1 --branch "$REF" "$REPO" "$SRC"
 fi
 
-# Short names become labskai/shopmade-<name>; a full vendor/name is used as is.
-PACKAGE_NAMES=""
-for name in $(echo "$PACKAGES" | tr ',' ' '); do
-    case "$name" in
-        */*) PACKAGE_NAMES="$PACKAGE_NAMES $name" ;;
-        *) PACKAGE_NAMES="$PACKAGE_NAMES labskai/shopmade-$name" ;;
-    esac
-done
-PACKAGE_NAMES="${PACKAGE_NAMES# }"
-
 ENV_FILE="$DIR/.env"
 
+# Replace (or add) KEY=VALUE without sed, so values with & | / or quotes are written as given.
 set_env() {
-    if grep -q "^$1=" "$ENV_FILE"; then
-        sed -i "s|^$1=.*|$1=$2|" "$ENV_FILE"
-    else
-        echo "$1=$2" >> "$ENV_FILE"
-    fi
+    local tmp
+    tmp="$(mktemp)"
+    grep -v "^$1=" "$ENV_FILE" > "$tmp" || true
+    printf '%s=%s\n' "$1" "$2" >> "$tmp"
+    cat "$tmp" > "$ENV_FILE"
+    rm -f "$tmp"
+}
+
+# A double-quoted value for the env file: escape backslashes and double quotes.
+quoted() {
+    local value="${1//\\/\\\\}"
+    printf '"%s"' "${value//\"/\\\"}"
 }
 
 if [ ! -f "$ENV_FILE" ]; then
@@ -117,12 +119,14 @@ fi
 # Options given on this run win; options left out keep what the last run saved.
 if [ -n "$DOMAIN" ]; then
     set_env SHOPMADE_DOMAIN "$DOMAIN"
+elif [ "$NO_DOMAIN" = "1" ]; then
+    set_env SHOPMADE_DOMAIN ""
 fi
 if [ -n "$PACKAGES" ]; then
-    set_env SHOPMADE_PACKAGES "\"$PACKAGE_NAMES\""
+    set_env SHOPMADE_PACKAGES "$(echo "$PACKAGES" | tr -d ' ')"
 fi
 if [ -n "$ORG_NAME" ]; then
-    set_env APP_ORG_NAME "\"$ORG_NAME\""
+    set_env APP_ORG_NAME "$(quoted "$ORG_NAME")"
 fi
 
 DOMAIN="$(grep '^SHOPMADE_DOMAIN=' "$ENV_FILE" | cut -d= -f2- || true)"
@@ -168,7 +172,10 @@ fi
 
 if [ -n "$OWNER_EMAIL" ]; then
     say "Creating the owner account"
-    compose exec -T app php artisan user:create-owner "$OWNER_EMAIL" "$OWNER_NAME" || true
+    if ! compose exec -T app php artisan user:create-owner "$OWNER_EMAIL" "$OWNER_NAME"; then
+        echo "Could not create $OWNER_EMAIL (see above). If the account already exists, sign in with it; to make it the owner run:" >&2
+        echo "  $DIR/compose exec app php artisan user:promote-super-admin $OWNER_EMAIL" >&2
+    fi
 fi
 
 URL="$(grep '^APP_URL=' "$ENV_FILE" | cut -d= -f2-)"

@@ -12,13 +12,13 @@ use Illuminate\Support\Composer;
 use function Laravel\Prompts\confirm;
 use function Laravel\Prompts\multiselect;
 
-#[Signature('shopmade:install {--packages= : Comma-separated short names to install without asking, e.g. jobs,invoicing} {--none : Install no packages} {--local : Set APP_ENV=local and APP_DEBUG=true in .env without asking}')]
+#[Signature('shopmade:install {--packages= : Comma-separated short names to install without asking, e.g. jobs,invoicing} {--none : Install no packages} {--local : Set APP_ENV=local and APP_DEBUG=true in .env without asking} {--no-dev : Leave the dev dependencies out (image builds)}')]
 #[Description('Pick the public Shopmade packages to include and install them with Composer. Runs after composer create-project; run it again to add more.')]
 class ShopmadeInstallCommand extends Command
 {
     public function handle(Composer $composer): int
     {
-        /** @var Collection<string, array{package: string, label: string, description: string}> $available */
+        /** @var Collection<string, array{package: string, repository: string, label: string, description: string}> $available */
         $available = collect(config('shopmade.packages', []))
             ->reject(fn (array $entry): bool => InstalledVersions::isInstalled($entry['package']));
 
@@ -29,11 +29,19 @@ class ShopmadeInstallCommand extends Command
         }
 
         if ($selected !== []) {
-            $names = array_map(fn (string $key): string => $available[$key]['package'], $selected);
-            $this->info('Installing '.implode(', ', $names).' ...');
+            $entries = array_map(fn (string $key): array => $available[$key], $selected);
+            $this->addRepositories($entries);
+            $this->info('Installing '.implode(', ', array_column($entries, 'package')).' ...');
+
+            // The tagged release once there is one, the main branch until then.
+            $requirements = array_map(fn (array $entry): string => "{$entry['package']}:^0.1 || dev-main", $entries);
+
+            if ($this->option('no-dev')) {
+                $requirements[] = '--update-no-dev';
+            }
 
             $installed = $composer->requirePackages(
-                $names,
+                $requirements,
                 output: $this->output,
                 composerBinary: getenv('COMPOSER_BINARY') ?: null,
             );
@@ -52,9 +60,35 @@ class ShopmadeInstallCommand extends Command
     }
 
     /**
+     * Point Composer at each package's GitHub repo, so installs don't depend on Packagist.
+     *
+     * @param  list<array{package: string, repository: string, label: string, description: string}>  $entries
+     */
+    private function addRepositories(array $entries): void
+    {
+        $path = base_path('composer.json');
+        $composerJson = json_decode((string) file_get_contents($path), true, flags: JSON_THROW_ON_ERROR);
+        $repositories = $composerJson['repositories'] ?? [];
+        $known = array_column($repositories, 'url');
+
+        foreach ($entries as $entry) {
+            if (! in_array($entry['repository'], $known, true)) {
+                $repositories[str_replace('/', '-', $entry['package'])] = ['type' => 'vcs', 'url' => $entry['repository']];
+            }
+        }
+
+        if ($repositories === ($composerJson['repositories'] ?? [])) {
+            return;
+        }
+
+        $composerJson['repositories'] = $repositories;
+        file_put_contents($path, json_encode($composerJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)."\n");
+    }
+
+    /**
      * The short names to install, [] for none, or null when --packages names one we don't offer.
      *
-     * @param  Collection<string, array{package: string, label: string, description: string}>  $available
+     * @param  Collection<string, array{package: string, repository: string, label: string, description: string}>  $available
      * @return list<string>|null
      */
     private function selectPackages(Collection $available): ?array
@@ -99,7 +133,7 @@ class ShopmadeInstallCommand extends Command
      */
     private function configureLocalEnvironment(): void
     {
-        $envPath = base_path('.env');
+        $envPath = $this->laravel->environmentFilePath();
 
         if (! is_file($envPath) || ! str_contains((string) file_get_contents($envPath), 'APP_ENV=production')) {
             return;

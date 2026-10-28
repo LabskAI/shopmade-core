@@ -18,15 +18,16 @@ Core ships:
 You need PHP 8.4+, Composer and Docker.
 
 ```bash
-composer create-project labskai/shopmade-core mysite
+composer create-project labskai/shopmade-core mysite dev-main \
+    --repository='{"type":"vcs","url":"https://github.com/LabskAI/shopmade-core"}'
 cd mysite
 docker compose up -d --build
 docker compose exec app php artisan user:create-owner you@example.com "Your Name"
 ```
 
-`create-project` asks which public packages to include (jobs, invoicing, shop, CRM, AI client) and whether this is a local development install. Run `php artisan shopmade:install` later to add more, or `php artisan shopmade:install --packages=jobs,invoicing` to skip the questions.
+Once core is on Packagist this shortens to `composer create-project labskai/shopmade-core mysite`. `create-project` asks which public packages to include (jobs, invoicing, shop, CRM, AI client) and whether this is a local development install. Run `php artisan shopmade:install` later to add more, or `php artisan shopmade:install --packages=jobs,invoicing` to skip the questions. It adds each package's GitHub repo to `composer.json` and requires its first release, or its `main` branch until there is one.
 
-No PHP on the machine? Run Composer in Docker instead: `docker run --rm -it -v "$PWD":/app -w /app composer create-project --ignore-platform-reqs labskai/shopmade-core mysite`.
+No PHP on the machine? Clone instead: `git clone https://github.com/LabskAI/shopmade-core mysite && cd mysite && cp .env.example .env`, then continue with `docker compose up -d --build` (the container runs `composer install`). Add packages later from inside it: `docker compose exec app php artisan shopmade:install`.
 
 Open [http://localhost:8000/login](http://localhost:8000/login) and sign in with the printed password. The public site is at [http://localhost:8000/site](http://localhost:8000/site); set `AGENTS_FRONT_HOST` to serve it at the root of its own domain, and `AGENTS_COMPANY` to pick the folder under `content/`.
 
@@ -49,11 +50,11 @@ curl -fsSL https://raw.githubusercontent.com/LabskAI/shopmade-core/main/install.
 
 ### On Easypanel, Coolify or another PaaS
 
-Deploy the image `ghcr.io/labskai/shopmade-core` (published for every release), or build it from this repo; the Dockerfile's last stage is the production image:
+Build the image from this repo (the Dockerfile's last stage is the production image). From the first tagged release on, it is also published as `ghcr.io/labskai/shopmade-core`.
 
 ```bash
 docker build --target production -t shopmade-core .
-docker build --target production --build-arg SHOPMADE_PACKAGES="labskai/shopmade-jobs" -t mysite .   # with packages
+docker build --target production --build-arg SHOPMADE_PACKAGES=jobs,invoicing -t mysite .   # with packages
 ```
 
 It bakes in the code, `vendor/` and the asset build, and serves HTTP on port 8080, with the queue worker and scheduler in the same container (`RUN_WORKERS=0` turns them off if you run them as their own containers). Give it:
