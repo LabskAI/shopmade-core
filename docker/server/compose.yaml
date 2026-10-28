@@ -15,6 +15,8 @@ services:
       APP_URL: ${APP_URL:?APP_URL is not set}
       APP_ORG_NAME: ${APP_ORG_NAME:-Shopmade}
       SESSION_SECURE_COOKIE: ${SESSION_SECURE_COOKIE:-true}
+      # install.sh sets `*` behind Caddy and leaves it empty when the app port is public.
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
       # Lets Claude Code and other desktop MCP clients sign in through their http://localhost callback (RFC 8252, with PKCE).
       AGENTS_OAUTH_ALLOW_LOOPBACK: ${AGENTS_OAUTH_ALLOW_LOOPBACK:-true}
       DB_CONNECTION: pgsql

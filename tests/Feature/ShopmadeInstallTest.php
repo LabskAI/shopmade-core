@@ -16,8 +16,8 @@ it('requires the packages named in --packages from their GitHub repos', function
         ->shouldReceive('requirePackages')
         ->once()
         ->withArgs(fn (array $packages): bool => $packages === [
-            'labskai/shopmade-jobs:^0.1 || dev-main',
-            'labskai/shopmade-invoicing:^0.1 || dev-main',
+            'labskai/shopmade-jobs:>=0.1 <1.0.0 || dev-main',
+            'labskai/shopmade-invoicing:>=0.1 <1.0.0 || dev-main',
         ])
         ->andReturn(true);
 
@@ -26,7 +26,7 @@ it('requires the packages named in --packages from their GitHub repos', function
 
     $repositories = json_decode(File::get(base_path('composer.json')), true)['repositories'];
 
-    expect($repositories)->toMatchArray([
+    expect($repositories)->toEqual([
         'labskai-shopmade-jobs' => ['type' => 'vcs', 'url' => 'https://github.com/LabskAI/shopmade-jobs', 'no-api' => true],
         'labskai-shopmade-invoicing' => ['type' => 'vcs', 'url' => 'https://github.com/LabskAI/shopmade-invoicing', 'no-api' => true],
     ]);

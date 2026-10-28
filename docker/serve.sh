@@ -9,7 +9,8 @@ keep_running() {
     pause=2
     while true; do
         started=$(date +%s)
-        su -s /bin/sh www-data -c "$1" || true
+        # setpriv keeps the container environment (APP_KEY, DB_*); su would reset it on Debian.
+        setpriv --reuid=www-data --regid=www-data --init-groups -- sh -c "$1" || true
         if [ $(( $(date +%s) - started )) -ge 60 ]; then
             pause=2
         else
