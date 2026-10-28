@@ -33,8 +33,8 @@ class ShopmadeInstallCommand extends Command
             $this->addRepositories($entries);
             $this->info('Installing '.implode(', ', array_column($entries, 'package')).' ...');
 
-            // The tagged release once there is one, the main branch until then.
-            $requirements = array_map(fn (array $entry): string => "{$entry['package']}:^0.1 || dev-main", $entries);
+            // Any 0.x release once there is one, the main branch until then.
+            $requirements = array_map(fn (array $entry): string => "{$entry['package']}:>=0.1 <1.0.0 || dev-main", $entries);
 
             if ($this->option('no-dev')) {
                 $requirements[] = '--update-no-dev';
@@ -53,8 +53,12 @@ class ShopmadeInstallCommand extends Command
             }
         }
 
+        if ($this->option('no-dev')) {
+            return self::SUCCESS;
+        }
+
         $this->configureLocalEnvironment();
-        $this->printNextSteps();
+        $this->printNextSteps(addedPackages: $selected !== []);
 
         return self::SUCCESS;
     }
@@ -155,9 +159,16 @@ class ShopmadeInstallCommand extends Command
         $this->info('Set APP_ENV=local and APP_DEBUG=true in .env.');
     }
 
-    private function printNextSteps(): void
+    private function printNextSteps(bool $addedPackages): void
     {
         $url = rtrim((string) config('app.url'), '/');
+
+        if ($addedPackages) {
+            $this->newLine();
+            $this->line('<options=bold>If the stack is already running</>, load the new packages:');
+            $this->line('  docker compose exec app php artisan migrate --force');
+            $this->line('  docker compose exec app npm run build');
+        }
 
         $this->newLine();
         $this->line('<options=bold>Next</>');

@@ -52,7 +52,7 @@ CMD ["php", "artisan", "queue:work", "database", "--sleep=1", "--tries=3", "--ti
 # The queue worker and scheduler run in the same container; set RUN_WORKERS=0 to run them as their own containers instead.
 FROM base AS production
 
-RUN apt-get update && apt-get install -y --no-install-recommends nginx \
+RUN apt-get update && apt-get install -y --no-install-recommends nginx tini \
     && rm -rf /var/lib/apt/lists/* /etc/nginx/sites-enabled/default
 
 COPY docker/php/production.conf /usr/local/etc/php-fpm.d/zz-www.conf
@@ -79,4 +79,6 @@ ENV APP_ENV=production APP_DEBUG=false SHOPMADE_IMAGE=production TRUSTED_PROXIES
 
 EXPOSE 8080
 
+# tini -g passes SIGTERM to the whole process group, so the queue worker and scheduler stop cleanly with nginx.
+ENTRYPOINT ["tini", "-g", "--", "entrypoint.sh"]
 CMD ["serve.sh"]

@@ -46,11 +46,11 @@ curl -fsSL https://raw.githubusercontent.com/LabskAI/shopmade-core/main/install.
     --domain site.example.com --owner-email you@example.com --packages jobs,invoicing
 ```
 
-[`install.sh`](install.sh) installs Docker if needed, downloads core to `/opt/shopmade/src`, writes the keys to `/opt/shopmade/.env`, builds the image with the packages you picked and starts it with Postgres and Caddy (automatic HTTPS). It prints the owner's password and the MCP connector URL. Leave out `--domain` to try it over plain HTTP on port 8080. Run it again to update; your settings, database and content stay. `/opt/shopmade/compose` runs `docker compose` on the install (`/opt/shopmade/compose logs -f app`).
+[`install.sh`](install.sh) installs Docker if needed, downloads core to `/opt/shopmade/src`, writes the keys to `/opt/shopmade/.env`, builds the image with the packages you picked and starts it with Postgres and Caddy (automatic HTTPS). It prints the owner's password and the MCP connector URL. Leave out `--domain` to try it over plain HTTP on port 8080 (proxy headers are then not trusted). Run it again to update; your settings, database and content stay. `/opt/shopmade/compose` runs `docker compose` on the install (`/opt/shopmade/compose logs -f app`).
 
 ### On Easypanel, Coolify or another PaaS
 
-Build the image from this repo (the Dockerfile's last stage is the production image). From the first tagged release on, it is also published as `ghcr.io/labskai/shopmade-core`.
+Build the image from this repo (the Dockerfile's last stage is the production image). From the first tagged release on, it is also published as `ghcr.io/labskai/shopmade-core` (GitHub creates that package private; it is made public after the first publish).
 
 ```bash
 docker build --target production -t shopmade-core .
@@ -75,13 +75,15 @@ Add `https://<your-host>/mcp/agents` as a custom connector in Claude. From Claud
 
 ## Add a feature
 
-Pick packages at install time (above), or install one later with Composer, then run its migrations and rebuild the assets so its Tailwind classes are compiled:
+Pick packages at install time (above), or add one to a running stack, then run its migrations and rebuild the assets so its Tailwind classes are compiled:
 
 ```bash
-docker compose exec app composer require vendor/shopmade-example
-docker compose exec app php artisan migrate
+docker compose exec app php artisan shopmade:install --packages=jobs   # or: composer require vendor/shopmade-example
+docker compose exec app php artisan migrate --force
 docker compose exec app npm run build
 ```
+
+On a server installed with `install.sh`, rerun it with `--packages` instead; it rebuilds the image and migrates on start.
 
 Writing your own package: [docs/packages.md](docs/packages.md).
 

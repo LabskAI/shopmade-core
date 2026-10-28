@@ -17,21 +17,29 @@ REF=main
 REPO=https://github.com/LabskAI/shopmade-core.git
 DOMAIN=""
 NO_DOMAIN=0
+NO_PACKAGES=0
 OWNER_EMAIL=""
 OWNER_NAME="Owner"
 PACKAGES=""
 ORG_NAME=""
 
 usage() {
-    sed -n '3,10p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//'
     cat <<'TXT'
+Install or update Shopmade core on this server with Docker.
+
+  curl -fsSL https://raw.githubusercontent.com/LabskAI/shopmade-core/main/install.sh | sudo bash -s -- \
+      --domain site.example.com --owner-email you@example.com --packages jobs,invoicing
+
+Options you leave out on a rerun keep their saved value.
+
 Options:
   --domain HOST        Serve https://HOST with an automatic certificate (saved for reruns)
   --no-domain          Forget the saved domain and serve plain HTTP on port 8080
   --owner-email EMAIL  Create the first owner account and print its password
   --owner-name NAME    Owner's name (default: Owner)
   --org-name NAME      Business name shown in the admin (default: Shopmade)
-  --packages LIST      Public packages to include, e.g. jobs,invoicing,shop,crm,ai
+  --packages LIST      Public packages to include, e.g. jobs,invoicing,shop,crm,ai (saved for reruns)
+  --no-packages        Forget the saved packages and build core alone
   --dir PATH           Install folder (default: /opt/shopmade)
   --ref REF            Git branch or tag of shopmade-core (default: main)
 TXT
@@ -45,6 +53,7 @@ while [ $# -gt 0 ]; do
         --owner-name) OWNER_NAME="$2"; shift 2 ;;
         --org-name) ORG_NAME="$2"; shift 2 ;;
         --packages) PACKAGES="$2"; shift 2 ;;
+        --no-packages) NO_PACKAGES=1; shift ;;
         --dir) DIR="$2"; shift 2 ;;
         --ref) REF="$2"; shift 2 ;;
         --repo) REPO="$2"; shift 2 ;;
@@ -89,20 +98,29 @@ fi
 
 ENV_FILE="$DIR/.env"
 
-# Replace (or add) KEY=VALUE without sed, so values with & | / or quotes are written as given.
+# Replace (or add) KEY='VALUE'. Single quotes keep $, &, | and double quotes literal for docker compose; a single
+# quote is written as \'. The new file is built next to the old one (mode 600) and moved over it in one step.
 set_env() {
-    local tmp
-    tmp="$(mktemp)"
+    local value="$2" tmp
+    case "$value" in
+        *$'\n'*|*$'\r'*) echo "The value for $1 cannot contain a line break." >&2; exit 1 ;;
+        *\\) echo "The value for $1 cannot end with a backslash." >&2; exit 1 ;;
+    esac
+    tmp="$(mktemp "$ENV_FILE.XXXXXX")"
+    chmod 600 "$tmp"
     grep -v "^$1=" "$ENV_FILE" > "$tmp" || true
-    printf '%s=%s\n' "$1" "$2" >> "$tmp"
-    cat "$tmp" > "$ENV_FILE"
-    rm -f "$tmp"
+    printf "%s='%s'\n" "$1" "${value//\'/\\\'}" >> "$tmp"
+    mv "$tmp" "$ENV_FILE"
 }
 
-# A double-quoted value for the env file: escape backslashes and double quotes.
-quoted() {
-    local value="${1//\\/\\\\}"
-    printf '"%s"' "${value//\"/\\\"}"
+# A saved value, without its quotes.
+get_env() {
+    local line value
+    line="$(grep "^$1=" "$ENV_FILE" | tail -n 1 || true)"
+    value="${line#*=}"
+    value="${value#\'}"
+    value="${value%\'}"
+    printf '%s' "${value//\\\'/\'}"
 }
 
 if [ ! -f "$ENV_FILE" ]; then
@@ -124,22 +142,29 @@ elif [ "$NO_DOMAIN" = "1" ]; then
 fi
 if [ -n "$PACKAGES" ]; then
     set_env SHOPMADE_PACKAGES "$(echo "$PACKAGES" | tr -d ' ')"
+elif [ "$NO_PACKAGES" = "1" ]; then
+    set_env SHOPMADE_PACKAGES ""
 fi
 if [ -n "$ORG_NAME" ]; then
-    set_env APP_ORG_NAME "$(quoted "$ORG_NAME")"
+    set_env APP_ORG_NAME "$ORG_NAME"
 fi
 
-DOMAIN="$(grep '^SHOPMADE_DOMAIN=' "$ENV_FILE" | cut -d= -f2- || true)"
+DOMAIN="$(get_env SHOPMADE_DOMAIN)"
 
 if [ -n "$DOMAIN" ]; then
+    # Only Caddy (and this host) reach the app port, so its X-Forwarded-* headers can be trusted.
     set_env APP_URL "https://$DOMAIN"
     set_env SESSION_SECURE_COOKIE true
     set_env SHOPMADE_BIND 127.0.0.1
+    set_env TRUSTED_PROXIES '*'
 else
-    HOST_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
+    # The app port is public: trust no proxy headers, or anyone could spoof X-Forwarded-For past the login limit.
+    HOST_IP="$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i = 1; i < NF; i++) if ($i == "src") print $(i + 1)}')"
+    HOST_IP="${HOST_IP:-$(hostname -I 2>/dev/null | awk '{print $1}')}"
     set_env APP_URL "http://${HOST_IP:-localhost}:8080"
     set_env SESSION_SECURE_COOKIE false
     set_env SHOPMADE_BIND 0.0.0.0
+    set_env TRUSTED_PROXIES ""
 fi
 
 # $DIR/compose runs docker compose on this install from anywhere, e.g. `/opt/shopmade/compose logs -f app`.
@@ -170,6 +195,21 @@ if [ "${READY:-0}" != "1" ]; then
     exit 1
 fi
 
+if [ -n "$DOMAIN" ]; then
+    say "Waiting for https://$DOMAIN (Caddy gets the certificate on first start)"
+    for _ in $(seq 1 30); do
+        if curl -fsS -o /dev/null --max-time 10 "https://$DOMAIN/up"; then
+            HTTPS_READY=1
+            break
+        fi
+        sleep 4
+    done
+    if [ "${HTTPS_READY:-0}" != "1" ]; then
+        echo "The app runs, but https://$DOMAIN does not answer yet. Check that the domain's DNS points at this server" >&2
+        echo "and ports 80 and 443 are open, then look at: $DIR/compose logs caddy" >&2
+    fi
+fi
+
 if [ -n "$OWNER_EMAIL" ]; then
     say "Creating the owner account"
     if ! compose exec -T app php artisan user:create-owner "$OWNER_EMAIL" "$OWNER_NAME"; then
@@ -178,7 +218,7 @@ if [ -n "$OWNER_EMAIL" ]; then
     fi
 fi
 
-URL="$(grep '^APP_URL=' "$ENV_FILE" | cut -d= -f2-)"
+URL="$(get_env APP_URL)"
 
 say "Shopmade is running"
 cat <<TXT
