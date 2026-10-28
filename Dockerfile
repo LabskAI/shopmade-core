@@ -49,10 +49,10 @@ CMD ["php", "artisan", "queue:work", "database", "--sleep=1", "--tries=3", "--ti
 
 # Self-contained image for a registry or a PaaS (Easypanel, Coolify, …): code, vendor and the Vite build are baked in,
 # nginx serves port 8080. Keep storage/ and content/ (the site content) on volumes, and set APP_KEY so a restart keeps sessions valid.
-# Run the same image with `php artisan queue:work database` and `php artisan schedule:work` for the worker and scheduler.
+# The queue worker and scheduler run in the same container; set RUN_WORKERS=0 to run them as their own containers instead.
 FROM base AS production
 
-RUN apt-get update && apt-get install -y --no-install-recommends nginx \
+RUN apt-get update && apt-get install -y --no-install-recommends nginx tini \
     && rm -rf /var/lib/apt/lists/* /etc/nginx/sites-enabled/default
 
 COPY docker/php/production.conf /usr/local/etc/php-fpm.d/zz-www.conf
@@ -61,7 +61,11 @@ COPY docker/serve.sh /usr/local/bin/serve.sh
 
 COPY . .
 
+# Public feature packages to bake in, by short name (config/shopmade.php), e.g. --build-arg SHOPMADE_PACKAGES=jobs,invoicing.
+ARG SHOPMADE_PACKAGES=""
+
 RUN composer install --no-interaction --prefer-dist --no-dev --optimize-autoloader \
+    && if [ -n "$SHOPMADE_PACKAGES" ]; then php artisan shopmade:install --packages="$SHOPMADE_PACKAGES" --no-dev --no-interaction; fi \
     && npm ci --no-audit --no-fund \
     && npm run build \
     && rm -rf node_modules \
@@ -75,4 +79,6 @@ ENV APP_ENV=production APP_DEBUG=false SHOPMADE_IMAGE=production TRUSTED_PROXIES
 
 EXPOSE 8080
 
+# tini -g passes SIGTERM to the whole process group, so the queue worker and scheduler stop cleanly with nginx.
+ENTRYPOINT ["tini", "-g", "--", "entrypoint.sh"]
 CMD ["serve.sh"]

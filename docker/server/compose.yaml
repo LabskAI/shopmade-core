@@ -1,0 +1,81 @@
+# One site on one server, used by install.sh: the production image (built from this checkout, with any packages
+# in SHOPMADE_PACKAGES), Postgres, and Caddy for HTTPS when SHOPMADE_DOMAIN is set (the `https` profile).
+# Settings come from the .env install.sh writes next to the checkout.
+services:
+  app:
+    build:
+      context: ../..
+      target: production
+      args:
+        SHOPMADE_PACKAGES: ${SHOPMADE_PACKAGES:-}
+    image: shopmade-site:latest
+    restart: unless-stopped
+    environment:
+      APP_KEY: ${APP_KEY:?APP_KEY is not set}
+      APP_URL: ${APP_URL:?APP_URL is not set}
+      APP_ORG_NAME: ${APP_ORG_NAME:-Shopmade}
+      SESSION_SECURE_COOKIE: ${SESSION_SECURE_COOKIE:-true}
+      # install.sh sets `*` behind Caddy and leaves it empty when the app port is public.
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
+      # Lets Claude Code and other desktop MCP clients sign in through their http://localhost callback (RFC 8252, with PKCE).
+      AGENTS_OAUTH_ALLOW_LOOPBACK: ${AGENTS_OAUTH_ALLOW_LOOPBACK:-true}
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: shopmade
+      DB_USERNAME: shopmade
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is not set}
+      DB_QUEUE_TABLE: queue_jobs
+      QUEUE_CONNECTION: database
+    ports:
+      - "${SHOPMADE_BIND:-127.0.0.1}:${SHOPMADE_PORT:-8080}:8080"
+    volumes:
+      - storage:/var/www/shopmade/storage
+      - content:/var/www/shopmade/content
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "php -r 'exit(@file_get_contents(\"http://127.0.0.1:8080/up\") === false ? 1 : 0);'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: shopmade
+      POSTGRES_USER: shopmade
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is not set}
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shopmade -d shopmade"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  caddy:
+    image: caddy:2.10-alpine
+    profiles: ["https"]
+    restart: unless-stopped
+    environment:
+      SHOPMADE_DOMAIN: ${SHOPMADE_DOMAIN:-}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+volumes:
+  storage:
+  content:
+  postgres:
+  caddy_data:
+  caddy_config:
