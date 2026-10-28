@@ -26,7 +26,12 @@ class SiteSettingsAdminController extends Controller
         ]);
 
         Setting::put('org.name', $validated['org_name']);
-        Setting::put('org.logo', $validated['org_logo'] ?? null);
+
+        if (filled($validated['org_logo'] ?? null)) {
+            Setting::put('org.logo', $validated['org_logo']);
+        } else {
+            Setting::query()->whereKey('org.logo')->delete();
+        }
 
         return redirect()->route('admin.settings.edit')->with('status', 'Settings saved.');
     }

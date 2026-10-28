@@ -25,6 +25,18 @@ it('saves organization settings', function () {
         ->and(Setting::get('org.logo'))->toBe('/images/demo-logo.svg');
 });
 
+it('saves the settings with the logo left blank and clears an old logo', function () {
+    Setting::put('org.logo', '/images/old-logo.svg');
+
+    $this->actingAs(User::factory()->admin()->create())
+        ->put(route('admin.settings.update'), ['org_name' => 'Demo Home Services', 'org_logo' => ''])
+        ->assertRedirect(route('admin.settings.edit'))
+        ->assertSessionHasNoErrors();
+
+    expect(Setting::get('org.name'))->toBe('Demo Home Services')
+        ->and(Setting::get('org.logo'))->toBeNull();
+});
+
 it('forbids crew from settings', function (string $role) {
     Setting::put('org.name', 'Shopmade');
     $member = User::factory()->{$role}()->create();

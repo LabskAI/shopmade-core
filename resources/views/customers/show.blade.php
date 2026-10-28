@@ -73,6 +73,12 @@
 
     <x-card title="Client portal access" class="mt-6">
         <p class="mb-3 text-control text-ink/70">People who can sign in to the client portal for this site. New people get an email with a set-password link.</p>
+        @if (session('portal_invite_link'))
+            <div class="mb-3 border border-line bg-surface p-3 text-control">
+                <p class="text-ink/70">Email is not set up on this install (MAIL_MAILER is {{ config('mail.default') }}), so the invite was not delivered. Send this set-password link yourself:</p>
+                <input type="text" readonly value="{{ session('portal_invite_link') }}" class="mt-2 w-full border border-line bg-white px-2 py-1 font-mono text-xs">
+            </div>
+        @endif
         <ul class="mb-4 divide-y divide-line-soft">
             @forelse ($customer->portalUsers as $portalUser)
                 <li class="flex items-center justify-between py-2 text-control">
