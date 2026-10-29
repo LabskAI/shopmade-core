@@ -69,9 +69,11 @@ Migrations run when the container starts. The Easypanel template is in [`docker/
 
 Before `content/`, the live site was `fronts/<company>/`, usually on a volume mounted at `/var/www/shopmade/fronts`. Before you start the new image, move that volume (or copy its `<company>` folder) to `/var/www/shopmade/content`. `front:install` only copies the starter into an **empty** `content/<company>`, so if you start with a new empty volume the starter site goes live in place of yours. If you leave the old volume on `fronts/`, your edits stay outside `content/` and are lost when the container is recreated. On the first boot with content already in place, `front:install` commits a full snapshot of it as the start of the git history.
 
-## Connect Claude
+## Connect Claude or ChatGPT
 
 Add `https://<your-host>/mcp/agents` as a custom connector in Claude. From Claude Code on the same machine as a local install, run `claude mcp add --transport http shopmade http://localhost:8000/mcp/agents` (local installs allow its localhost sign-in callback). For a server, run the same command with `https://<your-host>/mcp/agents`; that needs `AGENTS_OAUTH_ALLOW_LOOPBACK=true`, which `install.sh` and the Easypanel template set. Sign in as an admin when Claude asks; the connector then reads (`operator`) and edits (`director`) the website. Every save is live, kept in the page history and committed to the git history in `content/`. Connectors are listed and revoked under **Admin → Connectors**.
+
+In ChatGPT, turn on developer mode in the Apps (connectors) settings and create a new app or connector: give it a name, set the MCP server URL to `https://<your-host>/mcp/agents`, choose OAuth, and sign in as an admin when ChatGPT opens your site. ChatGPT registers itself; no client ID or secret to paste, and no extra env settings.
 
 ## Add a feature
 

@@ -101,6 +101,37 @@ it('registers the Cursor connector callback when loopback is off, the production
     ]);
 });
 
+it('registers ChatGPT connector callbacks when loopback is off, the production default', function (string $uri) {
+    config(['agents.oauth.allow_loopback_redirects' => false]);
+
+    $this->postJson('/oauth/register', [
+        'client_name' => 'ChatGPT',
+        'redirect_uris' => [$uri],
+        'token_endpoint_auth_method' => 'none',
+        'grant_types' => ['authorization_code', 'refresh_token'],
+        'response_types' => ['code'],
+    ])
+        ->assertCreated()
+        ->assertJsonPath('redirect_uris', [$uri])
+        ->assertJsonPath('token_endpoint_auth_method', 'none');
+})->with([
+    'stable callback' => 'https://chatgpt.com/connector_platform_oauth_redirect',
+    'per-connector callback' => 'https://chatgpt.com/connector/oauth/abc_DEF-123',
+]);
+
+it('rejects lookalikes of the ChatGPT per-connector callback', function (string $uri) {
+    $this->postJson('/oauth/register', ['redirect_uris' => [$uri]])
+        ->assertBadRequest()
+        ->assertJsonPath('error', 'invalid_redirect_uri');
+})->with([
+    'extra path segment' => 'https://chatgpt.com/connector/oauth/abc/evil',
+    'query string' => 'https://chatgpt.com/connector/oauth/abc?next=https://evil.example',
+    'empty id' => 'https://chatgpt.com/connector/oauth/',
+    'trailing newline' => "https://chatgpt.com/connector/oauth/abc\n",
+    'other host' => 'https://chatgpt.com.evil.example/connector/oauth/abc',
+    'plain http' => 'http://chatgpt.com/connector/oauth/abc',
+]);
+
 it('registers extra exact redirect URIs from AGENTS_OAUTH_EXTRA_REDIRECT_URIS', function () {
     $extra = 'https://connectors.example/oauth/callback';
     $csv = "  {$extra}, , {$extra} ";
