@@ -4,9 +4,10 @@ namespace App\Core\OAuth;
 
 /**
  * Which redirect URIs a client may register and use: an exact entry of `agents.oauth.redirect_uris`
- * (claude.ai, claude.com, cursor.com) or `agents.oauth.extra_redirect_uris`, or — while
+ * (claude.ai, claude.com, chatgpt.com, cursor.com) or `agents.oauth.extra_redirect_uris`, a match of an
+ * anchored `agents.oauth.redirect_uri_patterns` entry (ChatGPT's per-connector callbacks), or — while
  * `agents.oauth.allow_loopback_redirects` is on — an http://localhost:<port>/… or
- * http://127.0.0.1:<port>/… callback (MCP Inspector, Claude Code). Matching is exact; no wildcards.
+ * http://127.0.0.1:<port>/… callback (MCP Inspector, Claude Code). Otherwise no wildcards.
  */
 class RedirectUriPolicy
 {
@@ -18,7 +19,7 @@ class RedirectUriPolicy
             return false;
         }
 
-        if (in_array($uri, $this->allowlist(), true)) {
+        if (in_array($uri, $this->allowlist(), true) || $this->matchesPattern($uri)) {
             return true;
         }
 
@@ -61,6 +62,10 @@ class RedirectUriPolicy
     {
         $allowed = implode(', ', $this->allowlist());
 
+        if ((array) config('agents.oauth.redirect_uri_patterns', []) !== []) {
+            $allowed .= ', https://chatgpt.com/connector/oauth/<callback_id>';
+        }
+
         return $this->loopbackAllowed()
             ? "Allowed: {$allowed}, or http://localhost:<port>/… and http://127.0.0.1:<port>/… callbacks."
             : "Allowed: {$allowed}.";
@@ -86,6 +91,17 @@ class RedirectUriPolicy
             ...(array) config('agents.oauth.redirect_uris', []),
             ...(array) config('agents.oauth.extra_redirect_uris', []),
         ], is_string(...))));
+    }
+
+    private function matchesPattern(string $uri): bool
+    {
+        foreach ((array) config('agents.oauth.redirect_uri_patterns', []) as $pattern) {
+            if (is_string($pattern) && preg_match($pattern, $uri) === 1) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function loopbackAllowed(): bool

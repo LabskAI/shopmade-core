@@ -40,15 +40,22 @@ return [
         'refresh_token_ttl_days' => 30,
         'auth_code_ttl_minutes' => 10,
         /*
-        | Exact redirect URIs a public client may register. Claude and Cursor
-        | are built in. AGENTS_OAUTH_EXTRA_REDIRECT_URIS appends more (comma-
-        | separated, trimmed, empties dropped). Matching is exact; no wildcards.
-        | A registration that lists any disallowed URI is rejected in full.
+        | Exact redirect URIs a public client may register. Claude, ChatGPT and
+        | Cursor are built in. AGENTS_OAUTH_EXTRA_REDIRECT_URIS appends more
+        | (comma-separated, trimmed, empties dropped). Matching is exact; no
+        | wildcards. A registration that lists any disallowed URI is rejected
+        | in full. ChatGPT also uses per-connector callbacks of the form
+        | https://chatgpt.com/connector/oauth/{callback_id}, matched by
+        | redirect_uri_patterns (anchored, one path segment of [A-Za-z0-9_-]).
         */
         'redirect_uris' => [
             'https://claude.ai/api/mcp/auth_callback',
             'https://claude.com/api/mcp/auth_callback',
+            'https://chatgpt.com/connector_platform_oauth_redirect',
             'https://www.cursor.com/agents/mcp/oauth/callback',
+        ],
+        'redirect_uri_patterns' => [
+            '#\Ahttps://chatgpt\.com/connector/oauth/[A-Za-z0-9_-]{1,128}\z#',
         ],
         'extra_redirect_uris' => RedirectUriPolicy::extraRedirectUris(
             (string) env('AGENTS_OAUTH_EXTRA_REDIRECT_URIS', ''),
