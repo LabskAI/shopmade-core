@@ -1,12 +1,12 @@
 name: Shopmade
 description:
-  Shopmade is an open-source website and customer system for a small business,
-  built on Laravel. It serves the public website, an admin for the owner and
-  staff, and a client portal for the business's customers. Pages, facts and the
-  theme are files with their own git history, so every save can be restored.
-  An MCP server with OAuth lets Claude or another AI assistant read and edit the
-  site, and features such as jobs, invoicing or a shop are added as Laravel
-  packages.
+  Shopmade is a website and customer system made for the way your shop works.
+  The open-source core (MIT) serves the public website, an admin for the
+  owner and staff, and a client portal for the business's customers. Pages,
+  facts and the theme are files with a git history of every save, and pages can
+  be restored from the admin or over MCP. An MCP server with OAuth lets Claude or another AI assistant read
+  and edit the site, and features such as jobs, invoicing, a CRM or a shop are
+  added as open-source Laravel packages.
 instructions:
   After the first deploy, open the app service's Console in Easypanel and run
   `php artisan user:create-owner you@example.com "Your Name"`. It prints a
@@ -56,12 +56,14 @@ benefits:
       pages, facts and the theme after you sign in once.
   - title: Content With History
     description:
-      Pages and settings are plain files with a git history of every save, kept
-      on a volume and restorable from the admin.
+      Pages, facts and the theme are plain files on a volume with a git history
+      of every save. Pages can be restored from the admin or over MCP.
   - title: Grow It With Packages
     description:
-      Jobs, invoicing, a shop and a CRM are open-source Laravel packages that
-      plug into the admin, the client portal and the MCP server.
+      Optional open-source Laravel packages add jobs and a schedule (with a
+      portal visits tab), quotes and invoices (with a portal invoices tab), a
+      shop with a public storefront and orders, or CRM contacts. Each also adds
+      its own MCP tools.
 features:
   - title: Public Website
     description:
@@ -82,5 +84,4 @@ features:
 tags:
   - CMS
   - Website Builder
-  - CRM
   - Business Apps
