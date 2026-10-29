@@ -1,7 +1,7 @@
 name: Shopmade
 description:
-  Shopmade is your website, jobs board and office, made for the way your shop
-  works. The open-source core (MIT) serves the public website, an admin for the
+  Shopmade is a website and customer system made for the way your shop works.
+  The open-source core (MIT) serves the public website, an admin for the
   owner and staff, and a client portal for the business's customers. Pages,
   facts and the theme are files with their own git history, so every save can
   be restored. An MCP server with OAuth lets Claude or another AI assistant read
@@ -60,8 +60,10 @@ benefits:
       on a volume and restorable from the admin.
   - title: Grow It With Packages
     description:
-      Jobs, invoicing, a shop and a CRM are open-source Laravel packages that
-      plug into the admin, the client portal and the MCP server.
+      Optional open-source Laravel packages add jobs and a schedule (with a
+      portal visits tab), quotes and invoices (with a portal invoices tab), a
+      shop with a public storefront and orders, or CRM contacts. Each also adds
+      its own MCP tools.
 features:
   - title: Public Website
     description:
@@ -82,5 +84,4 @@ features:
 tags:
   - CMS
   - Website Builder
-  - CRM
   - Business Apps
