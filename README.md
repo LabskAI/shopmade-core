@@ -90,11 +90,13 @@ It serves HTTP on port 8080 and runs the queue worker and scheduler in the same 
 | Volume `/var/www/shopmade/storage` | Uploads and logs |
 | Volume `/var/www/shopmade/content` | The website, with its own git history (the first boot copies the starter site in) |
 
+**Coolify:** New Resource → Docker Compose Empty, paste [`docker/coolify/shopmade.yaml`](docker/coolify/shopmade.yaml), set a domain on the `shopmade` service and deploy. Coolify generates the app key and database password. Then open the `shopmade` container's Terminal and run `php artisan user:create-owner you@example.com "Your Name"`.
+
 The Easypanel template is in [`docker/easypanel/`](docker/easypanel/).
 
 ## Connect Claude or ChatGPT to a live site
 
-- **Claude:** add `https://<your-host>/mcp/agents` as a custom connector, or run `claude mcp add --transport http shopmade https://<your-host>/mcp/agents` from Claude Code (needs `AGENTS_OAUTH_ALLOW_LOOPBACK=true`, which `install.sh` and the Easypanel template set).
+- **Claude:** add `https://<your-host>/mcp/agents` as a custom connector, or run `claude mcp add --transport http shopmade https://<your-host>/mcp/agents` from Claude Code (needs `AGENTS_OAUTH_ALLOW_LOOPBACK=true`, which `install.sh` and the Coolify and Easypanel templates set).
 - **ChatGPT:** turn on developer mode in the Apps (connectors) settings, create a connector with the MCP URL `https://<your-host>/mcp/agents` and OAuth, and sign in as an admin. No client ID or secret needed.
 
 ## Settings worth knowing

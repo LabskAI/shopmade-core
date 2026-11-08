@@ -1,0 +1,55 @@
+# documentation: https://github.com/LabskAI/shopmade-core
+# slogan: Website, admin and client portal for a small business, with an MCP server so Claude can edit the site.
+# category: cms
+# tags: cms, website, laravel, mcp, portal, small business
+# logo: svgs/shopmade.png
+# port: 8080
+
+# Coolify: New Resource > Docker Compose Empty, paste this file, set a domain on the shopmade service, deploy. Then open
+# the shopmade container's Terminal and run: php artisan user:create-owner you@example.com "Your Name"
+services:
+  shopmade:
+    image: ghcr.io/labskai/shopmade-core:0.1.1
+    environment:
+      - SERVICE_URL_SHOPMADE_8080
+      - APP_URL=${SERVICE_URL_SHOPMADE}
+      - APP_KEY=base64:${SERVICE_REALBASE64_32_APPKEY}
+      - APP_ORG_NAME=${APP_ORG_NAME:-Shopmade}
+      # Only Coolify's proxy reaches the container, so its X-Forwarded-* headers can be trusted.
+      - TRUSTED_PROXIES=*
+      # The sign-in cookie is sent only over HTTPS. Set it to false while the service runs on a plain http:// domain.
+      - SESSION_SECURE_COOKIE=${SESSION_SECURE_COOKIE:-true}
+      # Lets Claude Code and other desktop MCP clients sign in through their http://localhost callback (RFC 8252, with PKCE).
+      - AGENTS_OAUTH_ALLOW_LOOPBACK=${AGENTS_OAUTH_ALLOW_LOOPBACK:-true}
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=${POSTGRES_DB:-shopmade}
+      - DB_USERNAME=${SERVICE_USER_POSTGRES}
+      - DB_PASSWORD=${SERVICE_PASSWORD_POSTGRES}
+    volumes:
+      - shopmade-storage:/var/www/shopmade/storage
+      - shopmade-content:/var/www/shopmade/content
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "php -r 'exit(@file_get_contents(\"http://127.0.0.1:8080/up\") === false ? 1 : 0);'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-shopmade}
+      - POSTGRES_USER=${SERVICE_USER_POSTGRES}
+      - POSTGRES_PASSWORD=${SERVICE_PASSWORD_POSTGRES}
+    volumes:
+      - shopmade-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
