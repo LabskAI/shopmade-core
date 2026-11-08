@@ -27,7 +27,7 @@ it('keeps app views on the Shopmade contract', function () {
     foreach ($files as $file) {
         $path = $file->getPathname();
 
-        $guestCards = ['/auth/login.blade.php', '/auth/set-portal-password.blade.php', '/auth/portal-invite-invalid.blade.php'];
+        $guestCards = ['/auth/login.blade.php', '/auth/set-portal-password.blade.php', '/auth/portal-invite-invalid.blade.php', '/auth/forgot-password.blade.php', '/auth/reset-password.blade.php'];
 
         if (str_contains($path, '/marketing/') || str_ends_with($path, '/welcome.blade.php') || collect($guestCards)->contains(fn (string $card): bool => str_ends_with($path, $card))) {
             continue;

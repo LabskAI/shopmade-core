@@ -512,7 +512,7 @@ class FrontLinter
         $forms = $facts['forms'] ?? null;
 
         if ($forms !== null && (! is_array($forms) || ! array_is_list($forms))) {
-            $problems[] = 'facts.forms must be a list of {slug, name, status, client, form, hosted} entries.';
+            $problems[] = 'facts.forms must be a list of {slug, name, status, provider, client, form, hosted} entries.';
         }
 
         foreach (is_array($forms) && array_is_list($forms) ? $forms : [] as $index => $form) {
@@ -525,6 +525,11 @@ class FrontLinter
             }
 
             $status = $form['status'] ?? null;
+            $provider = $form['provider'] ?? null;
+
+            if ($provider !== null && (! is_string($provider) || ! in_array(strtolower($provider), ['shopmade', 'aiformflow'], true))) {
+                $problems[] = sprintf('facts.forms[%d].provider must be shopmade (the built-in contact form) or aiformflow (found "%s").', $index, $this->show($provider));
+            }
 
             if ($status !== null && ! in_array($status, ['live', 'draft', 'off'], true)) {
                 $problems[] = sprintf('facts.forms[%d].status must be live, draft or off (found "%s").', $index, $this->show($status));
@@ -548,7 +553,7 @@ class FrontLinter
                 }
             }
 
-            if ($status === 'live' && $client === null && ! is_string($form['hosted'] ?? null)) {
+            if ($status === 'live' && ! FrontSite::isBuiltinForm($form) && $client === null && ! is_string($form['hosted'] ?? null)) {
                 $problems[] = sprintf('facts.forms[%d] is live but has no client (or <client>.aiff.dev hosted URL), so it cannot embed.', $index);
             }
         }

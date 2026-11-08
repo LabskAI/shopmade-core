@@ -4,7 +4,10 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Admin\PluginAdminController;
 use App\Http\Controllers\Admin\SiteSettingsAdminController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\NewPasswordController;
+use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\SetPortalPasswordController;
+use App\Http\Controllers\ContactMessageController;
 use App\Http\Controllers\CustomerChangeRequestController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
@@ -43,6 +46,14 @@ Route::get('site.webmanifest', fn () => response()->json([
 Route::middleware('guest')->group(function () {
     Route::get('login', [LoginController::class, 'create'])->name('login');
     Route::post('login', [LoginController::class, 'store'])->middleware('throttle:login');
+    Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])->name('password.request');
+    Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])
+        ->middleware('throttle:login')
+        ->name('password.email');
+    Route::get('reset-password/{token}', [NewPasswordController::class, 'create'])->name('password.reset');
+    Route::post('reset-password', [NewPasswordController::class, 'store'])
+        ->middleware('throttle:6,1')
+        ->name('password.update');
 });
 
 Route::middleware('signed')->group(function () {
@@ -64,6 +75,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware('can:staff.access')->group(function () {
         Route::resource('customers', CustomerController::class);
         Route::get('client-requests', [CustomerChangeRequestController::class, 'index'])->name('client-requests.index');
+        Route::get('messages', [ContactMessageController::class, 'index'])->name('contact-messages.index');
         Route::post('customers/{customer}/portal-users', [PortalUserController::class, 'store'])->name('customers.portal-users.store');
         Route::delete('customers/{customer}/portal-users/{user}', [PortalUserController::class, 'destroy'])->name('customers.portal-users.destroy');
         Route::resource('users', UserController::class)->only(['index', 'create', 'store', 'edit', 'update']);

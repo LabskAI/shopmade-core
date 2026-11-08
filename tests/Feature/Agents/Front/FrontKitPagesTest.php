@@ -177,7 +177,7 @@ it('lints the unsafe component CSS and the script from a foreign host as errors'
         ->assertExitCode(1);
 });
 
-it('renders the demo front with hero, cards, steps, faq, cta and a form embed', function () {
+it('renders the demo front with hero, cards, steps, faq, cta and the built-in contact form', function () {
     config(['agents.paths.repo' => base_path(), 'agents.company' => 'demo']);
 
     $this->get(route('front.home'))
@@ -187,8 +187,8 @@ it('renders the demo front with hero, cards, steps, faq, cta and a form embed', 
         ->assertSee('class="front-steps an-rise"', false)
         ->assertSee('class="front-faq"', false)
         ->assertSee('class="front-cta an-rise', false)
-        ->assertSee('data-aiformflow data-client="shopmade-demo" data-form="contact-en"', false)
-        ->assertSee('aiformflow.com/embed/v1/form.js', false);
+        ->assertSee('action="'.url('/').'/site/forms/contact"', false)
+        ->assertDontSee('aiformflow.com/embed/v1/form.js', false);
 
     $this->get(route('front.page', 'services'))->assertOk()->assertSee('class="front-flow an-rise"', false);
 });
