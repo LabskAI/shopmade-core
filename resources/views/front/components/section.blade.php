@@ -1,4 +1,4 @@
-<section class="{{ $class }}{{ filled($attrs['image'] ?? null) ? ' front-section--split' : '' }}"@if (filled($attrs['id'] ?? null)) id="{{ $attrs['id'] }}"@endif data-reveal>
+<section class="{{ $class }}{{ filled($attrs['image'] ?? null) ? ' front-section--split' : '' }} an-rise"@if (filled($attrs['id'] ?? null)) id="{{ $attrs['id'] }}"@endif data-reveal>
     <div class="front-section__body">
         @if (filled($attrs['kicker'] ?? null))
             <p class="front-kicker">{{ $attrs['kicker'] }}</p>

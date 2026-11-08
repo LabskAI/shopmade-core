@@ -13,7 +13,7 @@
             <img class="front-hero__image" src="{{ $hero['image'] ?? $hero['poster'] }}" alt="{{ $hero['alt'] }}"@if ($hero['width']) width="{{ $hero['width'] }}" height="{{ $hero['height'] }}"@endif fetchpriority="high" decoding="async"@if ($hero['position']) style="object-position: {{ $hero['position'] }}"@endif>
         @endif
         @if ($hero['caption'])
-            <figcaption class="front-hero__caption">{{ $hero['caption'] }}</figcaption>
+            <figcaption class="front-hero__caption mt2 t1 cm">{{ $hero['caption'] }}</figcaption>
         @endif
     </figure>
 @endif

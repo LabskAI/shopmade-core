@@ -25,6 +25,7 @@ class DiscoveryController extends FrontEditorController
         return view('site.discovery.show', [
             'aiSearch' => ($facts['discovery']['ai_search'] ?? true) !== false,
             'aiTraining' => ($facts['discovery']['ai_training'] ?? false) === true,
+            'contentSignal' => ($facts['discovery']['content_signal'] ?? false) === true,
             'liveRobots' => $live->exists() ? $discovery->robots($live) : null,
             'liveFiles' => collect(['robots.txt', 'sitemap.xml', 'llms.txt', 'llms-full.txt'])
                 ->mapWithKeys(fn (string $file): array => [$file => $live->fileUrl($file)])
@@ -39,6 +40,7 @@ class DiscoveryController extends FrontEditorController
         $request->validate([
             'ai_search' => ['nullable', 'boolean'],
             'ai_training' => ['nullable', 'boolean'],
+            'content_signal' => ['nullable', 'boolean'],
         ]);
 
         try {
@@ -46,6 +48,7 @@ class DiscoveryController extends FrontEditorController
                 'discovery' => [
                     'ai_search' => $request->boolean('ai_search'),
                     'ai_training' => $request->boolean('ai_training'),
+                    'content_signal' => $request->boolean('content_signal'),
                 ],
             ], Actor::forUser($request->user()));
         } catch (AgentRefusedException $exception) {

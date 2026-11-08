@@ -4,9 +4,12 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "front": "node resources/front/build.mjs"
     },
     "devDependencies": {
+        "@labs_kai/minim": "^3.0.1",
+        "@labs_kai/sscss": "^1.0.0",
         "@tailwindcss/vite": "^4.0.0",
         "alpinejs": "^3.14.9",
         "concurrently": "^10.0.3",

@@ -10,7 +10,7 @@ use Illuminate\Support\Str;
 
 /**
  * Agent-readiness checks over HTTP against a running front: home and every page answer 200,
- * robots.txt carries Sitemap and Content-Signal, sitemap.xml lists every page with hreflang
+ * robots.txt carries Sitemap (and Content-Signal when facts.discovery.content_signal is on), sitemap.xml lists every page with hreflang
  * alternates, llms.txt exists, and markdown negotiation works.
  */
 class FrontReadiness
@@ -52,7 +52,7 @@ class FrontReadiness
         $checks = [
             $this->homeCheck($home),
             $this->pagesCheck($site, $get),
-            $this->robotsCheck($get('robots.txt')),
+            $this->robotsCheck($site, $get('robots.txt')),
             $this->sitemapCheck($site, $root, $get('sitemap.xml')),
             $this->llmsCheck($get('llms.txt')),
             $this->markdownCheck($get('', 'text/markdown')),
@@ -118,7 +118,7 @@ class FrontReadiness
     /**
      * @return array{name: string, ok: bool, detail: string}
      */
-    private function robotsCheck(?Response $response): array
+    private function robotsCheck(FrontSite $site, ?Response $response): array
     {
         if ($response?->status() !== 200) {
             return $this->result('robots', false, 'robots.txt: '.$this->failure($response));
@@ -126,11 +126,11 @@ class FrontReadiness
 
         $missing = array_keys(array_filter([
             'Sitemap:' => preg_match('/^sitemap:\s*\S+/im', $response->body()) !== 1,
-            'Content-Signal:' => preg_match('/^content-signal:\s*\S+/im', $response->body()) !== 1,
+            'Content-Signal:' => $site->sendsContentSignal() && preg_match('/^content-signal:\s*\S+/im', $response->body()) !== 1,
         ]));
 
         return $missing === []
-            ? $this->result('robots', true, 'robots.txt has Sitemap and Content-Signal.')
+            ? $this->result('robots', true, $site->sendsContentSignal() ? 'robots.txt has Sitemap and Content-Signal.' : 'robots.txt has Sitemap.')
             : $this->result('robots', false, 'robots.txt has no '.implode(' or ', $missing).' line.');
     }
 

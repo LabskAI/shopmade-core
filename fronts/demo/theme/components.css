@@ -28,14 +28,3 @@
     background-size: auto 140%;
     background-blend-mode: soft-light;
 }
-
-.is-reveal-ready {
-    opacity: 0;
-    transform: translateY(12px);
-    transition: opacity 0.5s ease, transform 0.5s ease;
-}
-
-.is-reveal-ready.is-revealed {
-    opacity: 1;
-    transform: none;
-}

@@ -66,7 +66,7 @@ it('renders hero art, components, logo, CTA, fonts, component CSS and scripts wi
         ->toMatch('#<img class="front-hero__image" src="'.preg_quote(url('/'), '#').'/site/assets/hero-art\.svg\?v=[0-9a-f]+" alt="" width="1200" height="900"#')
         ->toContain('<p class="front-kicker">Example Co</p>')
         ->toContain('<h1>We build software</h1>')
-        ->toContain('<div class="front-cards" data-reveal>')
+        ->toContain('<div class="front-cards an-rise" data-reveal>')
         ->toMatch('#<img class="brand-logo" src="'.preg_quote(url('/'), '#').'/site/assets/logo\.svg\?v=[0-9a-f]+" alt="Example Co" width="180" height="32">#')
         ->toContain('<a class="btn btn-primary header-cta" href="#form-contact">Book a call</a>')
         ->toMatch('#<link rel="preload" href="'.preg_quote(url('/'), '#').'/site/assets/fonts/example\.woff2\?v=[0-9a-f]+" as="font"#')
@@ -183,12 +183,12 @@ it('renders the demo front with hero, cards, steps, faq, cta and a form embed', 
     $this->get(route('front.home'))
         ->assertOk()
         ->assertSee('class="front-hero__image"', false)
-        ->assertSee('class="front-cards"', false)
-        ->assertSee('class="front-steps"', false)
+        ->assertSee('class="front-cards an-rise"', false)
+        ->assertSee('class="front-steps an-rise"', false)
         ->assertSee('class="front-faq"', false)
-        ->assertSee('class="front-cta"', false)
+        ->assertSee('class="front-cta an-rise', false)
         ->assertSee('data-aiformflow data-client="shopmade-demo" data-form="contact-en"', false)
         ->assertSee('aiformflow.com/embed/v1/form.js', false);
 
-    $this->get(route('front.page', 'services'))->assertOk()->assertSee('class="front-flow"', false);
+    $this->get(route('front.page', 'services'))->assertOk()->assertSee('class="front-flow an-rise"', false);
 });

@@ -49,8 +49,8 @@ it('passes every check on a healthy front and sends the query with every request
     });
 });
 
-it('fails the robots check when Content-Signal is missing', function () {
-    FrontFixture::create();
+it('fails the robots check when the site opts into Content-Signal and it is missing', function () {
+    FrontFixture::create(['facts.yaml' => FrontFixture::facts(['discovery' => ['ai_search' => true, 'ai_training' => false, 'content_signal' => true]])]);
     serveFrontToReadiness($this, [
         '/site/robots.txt' => Http::response("User-agent: *\nAllow: /\nSitemap: ".url('/site/sitemap.xml')."\n"),
     ]);

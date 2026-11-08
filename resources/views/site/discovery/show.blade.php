@@ -25,6 +25,10 @@
                             <x-checkbox name="ai_training" label="Allow AI training" :checked="old('ai_training', $aiTraining)" />
                             <p class="mt-1 text-label text-ink/55">Crawlers that collect pages to train models (GPTBot, ClaudeBot, Google-Extended, CCBot and others).</p>
                         </div>
+                        <div>
+                            <x-checkbox name="content_signal" label="Add a Content-Signal line to robots.txt" :checked="old('content_signal', $contentSignal)" />
+                            <p class="mt-1 text-label text-ink/55">Cloudflare's machine-readable version of the policy above. Off by default: Lighthouse counts it as an unknown directive and the SEO score drops to 92.</p>
+                        </div>
                         <div class="flex flex-wrap items-center gap-2 border-t-2 border-line pt-4">
                             <x-button type="submit" x-bind:disabled="sending"><i data-lucide="save" class="size-4"></i>Save policy</x-button>
                             <p class="text-label text-ink/55">Stored in facts.yaml (discovery). Live as soon as you save.</p>

@@ -13,6 +13,17 @@
         <link rel="alternate" hreflang="{{ $alternate['lang'] }}" href="{{ $alternate['url'] }}">
     @endforeach
     <link rel="alternate" type="text/markdown" href="{{ $canonical }}">
+    <meta name="color-scheme" content="{{ $colorScheme }}">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="{{ $name }}">
+    <meta property="og:title" content="{{ $title }}">
+    <meta property="og:description" content="{{ $description }}">
+    <meta property="og:url" content="{{ $canonical }}">
+    <meta property="og:locale" content="{{ $lang }}">
+    @if ($shareImage)
+        <meta property="og:image" content="{{ $shareImage }}">
+    @endif
+    <meta name="twitter:card" content="{{ $shareImage ? 'summary_large_image' : 'summary' }}">
     @isset($icons['favicon.svg'])
         <link rel="icon" href="{{ $icons['favicon.svg'] }}" type="image/svg+xml">
     @endisset
@@ -29,8 +40,9 @@
         <link rel="preload" as="image" href="{{ $hero['image'] }}" fetchpriority="high">
     @endif
     @include('front.partials.fonts')
-    <style>{!! $tokens !!}</style>
-    @include('front.partials.styles')
+    <style>{!! \App\Core\Front\FrontCss::core() !!}{!! \App\Core\Front\FrontCss::roles() !!}{!! $tokens !!}</style>
+    <style>{!! \App\Core\Front\FrontCss::kit() !!}</style>
+    {!! \App\Core\Front\FrontCss::PLACEHOLDER !!}
     @if (filled($componentsCss))
         <style>{!! $componentsCss !!}</style>
     @endif
@@ -41,7 +53,7 @@
 <body class="layout-{{ $layout }}">
     <a class="skip" href="#main">{{ $t['skip_to_content'] }}</a>
     @include('front.partials.header')
-    <main id="main">
+    <main id="main" class="py7">
         @yield('content')
     </main>
     @include('front.partials.footer')
