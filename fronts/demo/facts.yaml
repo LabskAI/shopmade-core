@@ -63,9 +63,11 @@ cta:
     es: Reservar una visita
   target: "#form-contact"
 
-# AIFormFlow forms. status: live embeds the form (form.js loads only on pages that show one); otherwise a hosted
-# link is shown when there is one. Pages place a form with frontmatter forms: [contact] (after the page) or an
-# inline :::form slug="contact" fence.
+# Forms. provider: shopmade is the built-in contact form (name, email, phone, message): messages land in
+# Admin -> Messages and are emailed to `email` above. For an AIFormFlow form, drop provider and set client and
+# form; status: live embeds it (form.js loads only on pages that show one), otherwise a hosted link is shown when
+# there is one. Pages place a form with frontmatter forms: [contact] (after the page) or an inline
+# :::form slug="contact" fence.
 forms:
   - slug: contact
     name:
@@ -74,11 +76,8 @@ forms:
     lead:
       en: Tell us the address and what needs cleaning. We answer the same day.
       es: Díganos la dirección y qué hay que limpiar. Respondemos el mismo día.
+    provider: shopmade
     status: live
-    client: shopmade-demo
-    form:
-      en: contact-en
-      es: contact-es
 
 logo:
   src: assets/logo.svg

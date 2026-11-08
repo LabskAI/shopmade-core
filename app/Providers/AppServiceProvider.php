@@ -31,6 +31,11 @@ class AppServiceProvider extends ServiceProvider
             Limit::perMinute(20)->by((string) $request->ip()),
         ]);
 
+        RateLimiter::for('contact', fn (Request $request): array => [
+            Limit::perMinute(3)->by('contact|'.$request->ip()),
+            Limit::perHour(20)->by('contact-hour|'.$request->ip()),
+        ]);
+
         Gate::before(fn (User $user): ?bool => $user->isDeactivated() ? false : null);
 
         foreach (array_keys(Capabilities::map()) as $capability) {

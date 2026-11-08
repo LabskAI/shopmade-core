@@ -58,6 +58,13 @@ class FrontSite
         'form_error' => "The form didn't load.",
         'form_error_help' => 'Open it on its own page, or contact us. Nothing is lost.',
         'prefer_to_talk' => 'Prefer to talk?',
+        'form_name' => 'Name',
+        'form_email' => 'Email',
+        'form_phone' => 'Phone (optional)',
+        'form_message' => 'Message',
+        'form_send' => 'Send',
+        'form_sent' => "Thanks, we got your message. We'll get back to you soon.",
+        'form_invalid' => 'Please fill in your name, a valid email and a message, then send again.',
     ];
 
     /**
@@ -767,10 +774,21 @@ class FrontSite
     }
 
     /**
-     * One form from facts.forms, ready to render: an AIFormFlow embed when its status is `live` (and it has a client),
-     * else a link to the hosted form when there is one. Null when the form is unknown or has neither.
+     * True when a facts.forms entry uses the built-in contact form (`provider: shopmade`) instead of AIFormFlow.
      *
-     * @return array{slug: string, form: string, name: string, title: ?string, lead: ?string, live: bool, hosted: ?string, client: ?string, theme: string}|null
+     * @param  array<string, mixed>  $form
+     */
+    public static function isBuiltinForm(array $form): bool
+    {
+        return is_string($form['provider'] ?? null) && strtolower(trim($form['provider'])) === 'shopmade';
+    }
+
+    /**
+     * One form from facts.forms, ready to render: the built-in contact form when its provider is `shopmade` and its
+     * status is `live`, an AIFormFlow embed when its status is `live` (and it has a client), else a link to the hosted
+     * form when there is one. Null when the form is unknown or has none of these.
+     *
+     * @return array{slug: string, form: string, name: string, title: ?string, lead: ?string, live: bool, builtin: bool, action: ?string, hosted: ?string, client: ?string, theme: string}|null
      */
     public function form(string $slug, string $lang): ?array
     {
@@ -786,9 +804,11 @@ class FrontSite
         $hosted = $hosted !== null && preg_match('/^https:\/\/[^\/?#\s"\'<>]+(?:[\/?#][^\s"\'<>]*)?$/', $hosted) === 1 ? $hosted : null;
         $client = $this->text($form['client'] ?? null) ?? $this->formClient($hosted);
         $client = $client !== null && preg_match('/^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/', $client) === 1 ? $client : null;
-        $live = strtolower((string) $this->text($form['status'] ?? null)) === 'live' && $client !== null;
+        $isLive = strtolower((string) $this->text($form['status'] ?? null)) === 'live';
+        $builtin = $isLive && self::isBuiltinForm($form);
+        $live = $isLive && ! $builtin && $client !== null;
 
-        if (! $live && $hosted === null) {
+        if (! $builtin && ! $live && $hosted === null) {
             return null;
         }
 
@@ -801,6 +821,8 @@ class FrontSite
             'title' => $this->localizedText($form['title'] ?? null, $lang),
             'lead' => $this->localizedText($form['lead'] ?? null, $lang),
             'live' => $live,
+            'builtin' => $builtin,
+            'action' => $builtin ? $this->rootUrl().'/forms/'.$slug : null,
             'hosted' => $hosted,
             'client' => $client,
             'theme' => $theme !== null && in_array($theme, ['light', 'dark', 'auto'], true) ? $theme : 'light',
@@ -812,7 +834,7 @@ class FrontSite
      * places with an inline `:::form` fence.
      *
      * @param  array{lang: string, frontmatter: array<string, mixed>, body: string}  $page
-     * @return list<array{slug: string, form: string, name: string, title: ?string, lead: ?string, live: bool, hosted: ?string, client: ?string, theme: string}>
+     * @return list<array{slug: string, form: string, name: string, title: ?string, lead: ?string, live: bool, builtin: bool, action: ?string, hosted: ?string, client: ?string, theme: string}>
      */
     public function embeds(array $page): array
     {

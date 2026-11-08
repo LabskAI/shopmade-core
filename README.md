@@ -105,10 +105,14 @@ The Easypanel template is in [`docker/easypanel/`](docker/easypanel/).
 | `AGENTS_FRONT_HOST` | Serve the public site at the root of this domain instead of `/site` |
 | `SEED_DEMO=1` | Load demo data on start |
 | `RUN_WORKERS=0` | Production image only: don't run the queue worker and scheduler in the web container |
+| `MAIL_MAILER`, `MAIL_HOST`, … | Outgoing mail (password resets, portal invites, contact form messages). The default `log` sends nothing; set `smtp` and its settings to send for real |
+
+Without working mail, print a password reset link with `php artisan user:reset-link you@example.com`.
 
 ## What's in core
 
-- Sign-in with four roles: `super_admin`, `admin`, `user` (staff) and `client` (portal).
+- Sign-in with four roles: `super_admin`, `admin`, `user` (staff) and `client` (portal), and password reset by email.
+- A built-in contact form for the website; messages land in **Admin → Messages** and by email.
 - Customers, client portal and client change requests.
 - The public website: pages, facts, theme and SEO/AI discovery files in `content/<company>/` ([front kit](docs/front/README.md)).
 - The website editor under **Admin → Website**, with page history and restore.

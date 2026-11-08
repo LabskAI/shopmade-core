@@ -1,6 +1,6 @@
 # Public fronts — the front kit
 
-A company's public site, served by its own Shopmade install, from `content/<company>/` (`<company>` is `config('agents.company')`, env `AGENTS_COMPANY`, default `demo`). Edited under Admin → Website, from Claude over the site's MCP server, or by hand in that folder. `content/` is kept out of the code (gitignored, a volume in Docker) and is its own git repository: every save is a commit, so a code deploy never touches client edits. On first boot `php artisan front:install` copies the starter site from `fronts/<company>/` (or `fronts/demo/`) into it. The kit makes the site readable by people and by AI agents from day one. `fronts/demo/` is the reference front: the fictional "Demo Home Services", EN/ES, home and services pages using the components (hero art, cards, steps, flow, FAQ, CTA and an inline form), a logo, `theme/components.css`, and five skills (`brand-voice`, `design-direction`, `no-claims`, `design-taste`, `page-speed`).
+A company's public site, served by its own Shopmade install, from `content/<company>/` (`<company>` is `config('agents.company')`, env `AGENTS_COMPANY`, default `demo`). Edited under Admin → Website, from Claude over the site's MCP server, or by hand in that folder. `content/` is kept out of the code (gitignored, a volume in Docker) and is its own git repository: every save is a commit, so a code deploy never touches client edits. On first boot `php artisan front:install` copies the starter site from `fronts/<company>/` (or `fronts/demo/`) into it. The kit makes the site readable by people and by AI agents from day one. `fronts/demo/` is the reference front: the fictional "Demo Home Services", EN/ES, home and services pages using the components (hero art, cards, steps, flow, FAQ, CTA and an inline built-in contact form), a logo, `theme/components.css`, and five skills (`brand-voice`, `design-direction`, `no-claims`, `design-taste`, `page-speed`).
 
 ## Folder
 
@@ -99,11 +99,16 @@ hero:
 
 ## Forms
 
-AIFormFlow forms are declared once in `facts.forms` and placed by pages:
+Forms are declared once in `facts.forms` and placed by pages. A form is either the built-in contact form or an AIFormFlow form:
 
 ```yaml
 forms:
-  - slug: contact             # lowercase slug, used by pages and #form-<slug> links
+  - slug: contact             # the built-in contact form: name, email, phone (optional), message
+    name: {en: Contact, es: Contacto}
+    provider: shopmade
+    status: live              # live shows the form; draft/off hides it
+  - slug: quote               # an AIFormFlow form
+    name: {en: Get a quote}
     name: {en: Contact, es: Contacto}
     title: {en: Book a call}  # optional heading; else lang `form_title`, else name
     lead: {en: We answer within a day.}   # optional line under the heading; else lang `form_lead`
@@ -118,10 +123,11 @@ cta:
 ```
 
 - A page lists forms in frontmatter `forms: [contact]` (shown after the article), or places one inside the body with `:::form slug="contact"` followed by `:::` (e.g. in a section next to cards). A form placed inline is not repeated after the article.
-- `status: live` renders `<div data-aiformflow data-client data-form data-theme data-lang>`; `https://aiformflow.com/embed/v1/form.js` is loaded only on pages that show a live form. Without `live` (or a client), the hosted link is shown as a button, and a form with neither is not shown. If the embed has not mounted after a few seconds, a fallback message (and the hosted link) appears.
+- `provider: shopmade` with `status: live` renders a plain HTML form (no script) that posts to `<front>/forms/<slug>`. The message is stored, listed under **Admin → Messages** (staff and admins) and emailed to `facts.email` (else to the super admins), with the sender as reply-to; it needs working mail (`MAIL_MAILER`) to arrive by email. Front pages are stateless, so instead of CSRF the post checks a hidden honeypot field, an encrypted render-time token (at least 3 seconds and at most a day old) and a rate limit (3 a minute, 20 an hour per IP). The visitor comes back to the same page with `?form=<slug>&status=sent` (or `invalid`), which shows the `form_sent` (or `form_invalid`) line.
+- `status: live` (without `provider: shopmade`) renders `<div data-aiformflow data-client data-form data-theme data-lang>`; `https://aiformflow.com/embed/v1/form.js` is loaded only on pages that show a live form. Without `live` (or a client), the hosted link is shown as a button, and a form with neither is not shown. If the embed has not mounted after a few seconds, a fallback message (and the hosted link) appears.
 - Header CTA: a `#form-<slug>` target stays on the page when the page shows that form, else points at the first page in the language that does.
-- UI strings (lang files; English defaults): `open_form`, `open_form_page`, `form_title`, `form_lead`, `form_error`, `form_error_help`, `prefer_to_talk`, `contact`, `legal`. `language_name` labels the language switcher (default: the language's own name for en, es, pt, fr, de, it, nl; else the code).
-- `front:lint` checks `facts.forms` (slug, status, client and form ids, https `hosted`) and warns about pages that name an undeclared form.
+- UI strings (lang files; English defaults): `open_form`, `open_form_page`, `form_title`, `form_lead`, `form_error`, `form_error_help`, `prefer_to_talk`, `contact`, `legal`, and for the built-in form `form_name`, `form_email`, `form_phone`, `form_message`, `form_send`, `form_sent`, `form_invalid`. `language_name` labels the language switcher (default: the language's own name for en, es, pt, fr, de, it, nl; else the code).
+- `front:lint` checks `facts.forms` (slug, provider, status, client and form ids, https `hosted`) and warns about pages that name an undeclared form.
 
 ## Front-end standard: sscss, minim, Lighthouse 100
 
@@ -165,7 +171,7 @@ Every Shopmade front (the kit, themes, packages that add front markup, company f
 - JSON-LD: `LocalBusiness` from facts (city, region and country only unless `facts.address.publish: true`; never a rating), a `Service` block per service the page names, and the page's own `jsonld` with rating, review, award and certification keys removed. JSON is escaped so it cannot close its script element.
 - Every page: canonical link, hreflang alternates, Open Graph and Twitter card tags (`og:image` from a raster hero image or poster), `color-scheme` (`light dark` when tokens.css has a dark block), `<link rel="alternate" type="text/markdown">`, a `Link` header pointing at the sitemap and llms.txt, the language switcher, `theme/tokens.css` and `theme/components.css` inlined, self-hosted `@font-face` rules, the logo, the header CTA, the declared scripts (with the page nonce) and well-known icons.
 
-Not built yet: a core lead intake for forms (`LeadIntake`: Turnstile, honeypot, time-to-submit, duplicate check; today forms are AIFormFlow embeds), the chat panel bound to an office agent, `/.well-known/mcp/server-card.json`, `/.well-known/mcp.json`, `/.well-known/api-catalog`, `/.well-known/agent-skills/index.json`, `Link` headers for those, `FAQPage` JSON-LD, `theme/components/*.blade.php` overrides.
+Not built yet: Turnstile and duplicate checks for the built-in contact form, the chat panel bound to an office agent, `/.well-known/mcp/server-card.json`, `/.well-known/mcp.json`, `/.well-known/api-catalog`, `/.well-known/agent-skills/index.json`, `Link` headers for those, `FAQPage` JSON-LD, `theme/components/*.blade.php` overrides.
 
 ## Rules enforced by `php artisan front:lint <company>`
 
@@ -182,7 +188,7 @@ Deterministic; every message names the file and quotes the offending text. Error
 - **discovery** — robots.txt, sitemap.xml (well-formed), llms.txt, llms-full.txt, JSON-LD and every page body render without an exception.
 - **skills / layout** (warnings) — a skill without a name or description, or named differently from its file; an unknown layout.
 - **components** (warnings) — an unknown `:::fence` (shown as text) or an attribute a component does not take.
-- **forms** — `facts.forms` entries need a slug, a known status, valid client and form ids and an https `hosted` (errors); a page naming a form that is not declared (warning).
+- **forms** — `facts.forms` entries need a slug, a known status and provider, valid client and form ids and an https `hosted` (errors); a page naming a form that is not declared (warning).
 - **hero / assets** — a `hero` without media, or a hero, component image, asset icon, markdown `assets/…` link, logo, font face or script that is not a served file under assets/ (errors); a `hero.position` that is not `"x% y%"` (warning).
 - **scripts / fonts** — `facts.scripts` may only name `assets/….js` files or `https://aiformflow.com` URLs; font faces need a family and a `.woff2` src (errors).
 - **components_css** — `theme/components.css` breaks a rule from "Component CSS" (error).

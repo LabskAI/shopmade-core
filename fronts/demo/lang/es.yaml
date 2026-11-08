@@ -27,3 +27,10 @@ open_form_page: Abrir el formulario en su propia página
 form_error: El formulario no cargó.
 form_error_help: Ábralo en su propia página o contáctenos. No se pierde nada.
 prefer_to_talk: ¿Prefiere hablar?
+form_name: Nombre
+form_email: Correo
+form_phone: Teléfono (opcional)
+form_message: Mensaje
+form_send: Enviar
+form_sent: Gracias, recibimos su mensaje. Le respondemos pronto.
+form_invalid: Escriba su nombre, un correo válido y un mensaje, y envíe de nuevo.

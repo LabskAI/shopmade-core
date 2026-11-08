@@ -28,4 +28,13 @@ return [
         'view_roles' => ['user', 'admin'],
         'manage_roles' => ['user', 'admin'],
     ],
+    [
+        'slug' => 'messages',
+        'label' => 'Messages',
+        'group' => 'People',
+        'route' => 'contact-messages.index',
+        'pattern' => 'contact-messages.*',
+        'view_roles' => ['user', 'admin'],
+        'manage_roles' => ['user', 'admin'],
+    ],
 ];

@@ -88,3 +88,11 @@ a { color: var(--color-link, var(--acc)); }
 .front-form__embed:has(iframe, form) .front-form__fallback { display: none; }
 @keyframes front-form-fallback { to { visibility: visible; } }
 .front-forms { max-width: var(--measure, 68ch); }
+.front-form__fields { display: grid; gap: var(--space-3, 0.75rem); margin-top: var(--space-4, 1rem); }
+.front-form__field { display: grid; gap: var(--space-1, 0.25rem); margin: 0; }
+.front-form__field label { font-weight: 600; }
+.front-form__field input, .front-form__field textarea { width: 100%; padding: var(--space-2, 0.5rem); border: 1px solid var(--color-line, rgba(0, 0, 0, 0.24)); border-radius: var(--r); background: var(--bg, #fff); color: inherit; font: inherit; }
+.front-form__field input:focus-visible, .front-form__field textarea:focus-visible { outline: 2px solid var(--acc); outline-offset: 1px; }
+.front-form__trap { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.front-form__notice { margin: var(--space-4, 1rem) 0 0; padding: var(--space-3, 0.75rem); border-left: 3px solid var(--acc); }
+.front-form__notice--error { border-left-color: #b42318; }
