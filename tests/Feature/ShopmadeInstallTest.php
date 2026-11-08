@@ -11,35 +11,51 @@ afterEach(function () {
     File::put(base_path('composer.json'), $this->composerJson);
 });
 
+/**
+ * Offer packages that are never installed, so the tests pass inside a package's own CI
+ * where that package is already required.
+ */
+function offerUninstalledPackages(): void
+{
+    config(['shopmade.packages' => collect(['alpha', 'beta'])->mapWithKeys(fn (string $name): array => [$name => [
+        'package' => "labskai/shopmade-test-{$name}",
+        'repository' => "https://github.com/LabskAI/shopmade-test-{$name}",
+        'label' => ucfirst($name),
+        'description' => "Test package {$name}",
+    ]])->all()]);
+}
+
 it('requires the packages named in --packages from their GitHub repos', function () {
+    offerUninstalledPackages();
     $this->mock(Composer::class)
         ->shouldReceive('requirePackages')
         ->once()
         ->withArgs(fn (array $packages): bool => $packages === [
-            'labskai/shopmade-jobs:>=0.1 <1.0.0 || dev-main',
-            'labskai/shopmade-invoicing:>=0.1 <1.0.0 || dev-main',
+            'labskai/shopmade-test-alpha:>=0.1 <1.0.0 || dev-main',
+            'labskai/shopmade-test-beta:>=0.1 <1.0.0 || dev-main',
         ])
         ->andReturn(true);
 
-    $this->artisan('shopmade:install', ['--packages' => 'jobs, Invoicing,jobs', '--no-interaction' => true])
+    $this->artisan('shopmade:install', ['--packages' => 'alpha, Beta,alpha', '--no-interaction' => true])
         ->assertSuccessful();
 
     $repositories = json_decode(File::get(base_path('composer.json')), true)['repositories'];
 
-    expect($repositories)->toEqual([
-        'labskai-shopmade-jobs' => ['type' => 'vcs', 'url' => 'https://github.com/LabskAI/shopmade-jobs', 'no-api' => true],
-        'labskai-shopmade-invoicing' => ['type' => 'vcs', 'url' => 'https://github.com/LabskAI/shopmade-invoicing', 'no-api' => true],
+    expect($repositories)->toMatchArray([
+        'labskai-shopmade-test-alpha' => ['type' => 'vcs', 'url' => 'https://github.com/LabskAI/shopmade-test-alpha', 'no-api' => true],
+        'labskai-shopmade-test-beta' => ['type' => 'vcs', 'url' => 'https://github.com/LabskAI/shopmade-test-beta', 'no-api' => true],
     ]);
 });
 
 it('leaves the dev dependencies out with --no-dev', function () {
+    offerUninstalledPackages();
     $this->mock(Composer::class)
         ->shouldReceive('requirePackages')
         ->once()
         ->withArgs(fn (array $packages): bool => end($packages) === '--update-no-dev')
         ->andReturn(true);
 
-    $this->artisan('shopmade:install', ['--packages' => 'crm', '--no-dev' => true, '--no-interaction' => true])
+    $this->artisan('shopmade:install', ['--packages' => 'alpha', '--no-dev' => true, '--no-interaction' => true])
         ->assertSuccessful();
 });
 
@@ -77,9 +93,10 @@ it('installs nothing without a choice when not interactive', function () {
 });
 
 it('fails when composer cannot install the packages', function () {
+    offerUninstalledPackages();
     $this->mock(Composer::class)->shouldReceive('requirePackages')->once()->andReturn(false);
 
-    $this->artisan('shopmade:install', ['--packages' => 'crm', '--no-interaction' => true])
+    $this->artisan('shopmade:install', ['--packages' => 'alpha', '--no-interaction' => true])
         ->assertFailed();
 });
 
