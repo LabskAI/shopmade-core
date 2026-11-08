@@ -70,8 +70,9 @@ client_id = json.loads(body)["client_id"]
 
 status, _, page = call(browser, f"{base}/login")
 token = re.search(r'name="_token" value="([^"]+)"', page).group(1)
-status, _, page = call(browser, f"{base}/login", data=urllib.parse.urlencode({"_token": token, "email": email, "password": password}).encode())
-check(status == 200 and 'name="password"' not in page, "owner signs in")
+status, headers, _ = call(no_redirect, f"{base}/login", data=urllib.parse.urlencode({"_token": token, "email": email, "password": password}).encode())
+location = headers.get("Location", "")
+check(status == 302 and location.startswith(base) and not location.endswith("/login"), f"owner signs in (sent to {location})")
 
 verifier = secrets.token_urlsafe(48)
 challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
