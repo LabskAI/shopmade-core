@@ -66,4 +66,4 @@ jobs:
           compose="docker compose -p coolify-ci -f docker/coolify/shopmade.yaml -f /tmp/coolify-ci.yaml"
           $compose up -d --wait --wait-timeout 300 || { $compose logs; exit 1; }
           password="$($compose exec -T shopmade php artisan user:create-owner owner@example.com Owner | sed -n 's/.*Password: //p')"
-          python3 .github/scripts/mcp-smoke.py http://127.0.0.1:8080 owner@example.com "$password" || { $compose logs shopmade; $compose exec -T shopmade printenv APP_URL; curl -sS -D - -o /dev/null http://127.0.0.1:8080/dashboard; $compose exec -T shopmade sh -c 'nginx -T 2>/dev/null | grep -n -i -E "port|host|server_name|include"; echo "<?php echo json_encode(array_filter(\$_SERVER, fn (\$k) => str_starts_with(\$k, \"HTTP_\") || str_starts_with(\$k, \"SERVER_\") || \$k === \"REMOTE_ADDR\", ARRAY_FILTER_USE_KEY));" > public/diag.php'; curl -sS http://127.0.0.1:8080/diag.php; exit 1; }
+          python3 .github/scripts/mcp-smoke.py http://127.0.0.1:8080 owner@example.com "$password" || { $compose logs shopmade; exit 1; }
