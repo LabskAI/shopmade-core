@@ -38,7 +38,7 @@ it('lists the demo skills with their descriptions and returns their content', fu
     $skills = $kit->skills('demo', base_path());
 
     expect(array_column($skills, 'name'))->toBe(['brand-voice', 'design-direction', 'design-taste', 'no-claims', 'page-speed'])
-        ->and(array_filter(array_column($skills, 'description')))->toHaveCount(4)
+        ->and(array_filter(array_column($skills, 'description')))->toHaveCount(5)
         ->and($skills[3]['path'])->toBe('fronts/demo/skills/no-claims.md')
         ->and($kit->skill('demo', 'no-claims', base_path()))->toContain('name: no-claims');
 });
