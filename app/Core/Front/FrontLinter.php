@@ -207,7 +207,7 @@ class FrontLinter
         if (! is_array($discovery)) {
             $error('facts.discovery must be a mapping with ai_search and ai_training.');
         } else {
-            foreach (['ai_search', 'ai_training'] as $key) {
+            foreach (['ai_search', 'ai_training', 'content_signal'] as $key) {
                 if (array_key_exists($key, $discovery) && ! is_bool($discovery[$key])) {
                     $error(sprintf('facts.discovery.%s must be true or false.', $key));
                 }

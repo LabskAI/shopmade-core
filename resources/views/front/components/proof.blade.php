@@ -1,9 +1,9 @@
-<section class="{{ $class }}"@if (filled($attrs['id'] ?? null)) id="{{ $attrs['id'] }}"@endif data-reveal>
+<section class="{{ $class }} an-rise"@if (filled($attrs['id'] ?? null)) id="{{ $attrs['id'] }}"@endif data-reveal>
     {!! $html !!}
     @if ($items !== [])
-        <ul class="front-proof__points">
+        <ul class="front-proof__points gr g4">
             @foreach ($items as $item)
-                <li class="front-proof__point">
+                <li class="front-proof__point f g3">
                     @include('front.partials.icon', ['attrs' => $item['attrs'], 'size' => 'md'])
                     <div class="front-proof__text">
                         @if (filled($item['attrs']['title'] ?? null))

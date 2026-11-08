@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Front;
 
+use App\Core\Front\FrontCss;
 use App\Core\Front\FrontJsonLd;
+use App\Core\Front\FrontMinim;
 use App\Core\Front\FrontSite;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -56,7 +58,8 @@ class PageController extends FrontController
     /**
      * The HTML page, or its markdown source for clients that prefer it. A `noindex` page sends
      * `X-Robots-Tag: noindex` with both, because the markdown has no robots meta tag. The HTML page
-     * carries a per-response CSP nonce: only its own scripts, company assets and AIFormFlow run.
+     * carries a per-response CSP nonce: only its own scripts, company assets and AIFormFlow run. Its sscss
+     * utilities are generated from the rendered markup, and Minim is inlined only when the markup has a state tag.
      */
     private function render(Request $request, FrontSite $site, FrontJsonLd $jsonLd, string $slug, string $lang): Response
     {
@@ -79,10 +82,12 @@ class PageController extends FrontController
 
         $nonce = base64_encode(random_bytes(16));
 
-        return response()->view('front.page', [
+        $html = view('front.page', [
             ...$site->viewData($page, $nonce),
             'jsonLd' => $jsonLd->scripts($site, $page),
-        ], 200, [
+        ])->render();
+
+        return response(FrontMinim::inline(FrontCss::inline($html), $nonce), 200, [
             ...$headers,
             'Link' => $site->linkHeader(),
             'Content-Security-Policy' => FrontSite::contentSecurityPolicy($nonce),

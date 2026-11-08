@@ -2,7 +2,7 @@
 
 @section('content')
     @if ($layout === 'home' && $hero)
-        <div class="wrap front-hero">
+        <div class="wrap front-hero gr g5 ac mb7 l-c2">
             <div class="front-hero__body prose">
                 @if ($hero['kicker'])
                     <p class="front-kicker">{{ $hero['kicker'] }}</p>
@@ -20,7 +20,7 @@
     @else
         <div class="wrap">
             @if ($hero)
-                <div class="front-hero front-hero--banner">
+                <div class="front-hero front-hero--banner mb7">
                     @include('front.partials.hero')
                 </div>
             @endif

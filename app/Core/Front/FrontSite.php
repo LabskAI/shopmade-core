@@ -40,6 +40,7 @@ class FrontSite
         'home' => 'Home',
         'skip_to_content' => 'Skip to content',
         'menu' => 'Main menu',
+        'menu_button' => 'Menu',
         'languages' => 'Languages',
         'call' => 'Call',
         'email' => 'Email',
@@ -335,6 +336,16 @@ class FrontSite
     public function allowsAiTraining(): bool
     {
         return ($this->facts()['discovery']['ai_training'] ?? false) === true;
+    }
+
+    /**
+     * Whether robots.txt carries a Cloudflare Content-Signal line (facts.discovery.content_signal, default off).
+     * Off by default because Lighthouse reads it as an unknown directive and takes SEO to 92; the per-crawler
+     * groups carry the same AI policy either way.
+     */
+    public function sendsContentSignal(): bool
+    {
+        return ($this->facts()['discovery']['content_signal'] ?? false) === true;
     }
 
     /**
@@ -1126,6 +1137,8 @@ class FrontSite
             'canonical' => $canonical !== null && Str::startsWith($canonical, ['https://', 'http://']) ? $canonical : $this->url($page['slug'], $lang),
             'alternates' => $this->alternates($page['slug']),
             'tokens' => $this->tokensCss(),
+            'colorScheme' => preg_match('/prefers-color-scheme\s*:\s*dark/i', $this->tokensCss()) === 1 ? 'light dark' : 'light',
+            'shareImage' => $this->shareImage($hero),
             'componentsCss' => $this->componentsCss(),
             'html' => $html,
             'heroHtml' => $heroHtml,
@@ -1156,6 +1169,23 @@ class FrontSite
             'cspNonce' => $cspNonce,
             'year' => now()->year,
         ];
+    }
+
+    /**
+     * The image link previews show (og:image): the page's raster hero image or video poster, as an absolute URL.
+     * SVG is skipped because most previewers don't render it.
+     *
+     * @param  array<string, mixed>|null  $hero
+     */
+    private function shareImage(?array $hero): ?string
+    {
+        $image = $hero['image'] ?? $hero['poster'] ?? null;
+
+        if (! is_string($image) || preg_match('/\.svg(\?|$)/i', $image) === 1) {
+            return null;
+        }
+
+        return url($image);
     }
 
     /**

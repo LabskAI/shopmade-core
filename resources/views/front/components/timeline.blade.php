@@ -2,7 +2,7 @@
     $stats = array_values(array_filter($items, fn (array $item): bool => $item['name'] === 'stat'));
     $steps = array_values(array_filter($items, fn (array $item): bool => $item['name'] === 'step'));
 @endphp
-<article class="{{ $class }}"@if (filled($attrs['id'] ?? null)) id="{{ $attrs['id'] }}"@endif data-reveal>
+<article class="{{ $class }} an-rise"@if (filled($attrs['id'] ?? null)) id="{{ $attrs['id'] }}"@endif data-reveal>
     @if (filled($attrs['title'] ?? null) || filled($attrs['where'] ?? null) || filled($attrs['span'] ?? null))
         <header class="front-timeline__head">
             @if (filled($attrs['title'] ?? null))
@@ -17,7 +17,7 @@
         </header>
     @endif
     @if ($stats !== [])
-        <dl class="front-timeline__stats">
+        <dl class="front-timeline__stats f fw g5">
             @foreach ($stats as $stat)
                 <div class="{{ $stat['class'] }}">
                     <dt class="front-stat__label">{{ $stat['attrs']['label'] ?? '' }}</dt>
@@ -29,7 +29,7 @@
     @if ($steps !== [])
         <ol class="front-timeline__list">
             @foreach ($steps as $step)
-                <li class="{{ $step['class'] }} front-timeline__step">
+                <li class="{{ $step['class'] }} front-timeline__step pb4 px4">
                     @if (filled($step['attrs']['time'] ?? null))
                         <p class="front-timeline__time">{{ $step['attrs']['time'] }}</p>
                     @endif

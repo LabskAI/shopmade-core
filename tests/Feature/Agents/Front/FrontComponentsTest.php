@@ -50,11 +50,11 @@ it('renders a section with kicker, image and nested cards', function () {
         MD);
 
     expect($html)
-        ->toContain('<section class="front-section front-section--muted brand-band front-section--split" id="services" data-reveal>')
+        ->toContain('<section class="front-section front-section--muted brand-band front-section--split an-rise" id="services" data-reveal>')
         ->toContain('<p class="front-kicker">What we do</p>')
         ->toContain('<h2>Services</h2>')
         ->toMatch('#<img src="'.preg_quote(url('/'), '#').'/site/assets/shot\.png\?v=[0-9a-f]+" alt="A screenshot" width="2" height="3"#')
-        ->toContain('<div class="front-cards" data-reveal>')
+        ->toContain('<div class="front-cards an-rise" data-reveal>')
         ->toContain('<h3 class="front-card__title">')
         ->toContain('Websites')
         ->toContain('<p>Fast sites.</p>')
@@ -131,15 +131,15 @@ it('renders stat, faq, cta, quote, steps, flow, proof and timeline', function ()
         ->toContain('<p class="front-stat__label">Sites live</p>')
         ->toContain('<div class="front-faq">')
         ->toContain('<summary class="front-item__question">Do you host?')
-        ->toContain('<aside class="front-cta" data-reveal>')
+        ->toContain('<aside class="front-cta an-rise r p5 ba cw" data-reveal>')
         ->toContain('<a class="btn btn-primary" href="'.url('/').'/site/services">See services</a>')
         ->toContain('<a class="btn btn-outline" href="mailto:hi@example.com">Email</a>')
         ->toContain('<blockquote class="front-quote__text"><p>It works.</p>')
         ->toContain('<cite>Sam</cite>')
-        ->toContain('<span class="front-step__number" aria-hidden="true">2</span>')
-        ->toContain('<p class="front-step__time">Week 2</p>')
-        ->toContain('<ol class="front-flow__list" aria-label="How it works">')
-        ->toContain('<li class="front-flow__arrow" aria-hidden="true">')
+        ->toContain('<span class="front-step__number f ac jc rp ba cw b mb2" aria-hidden="true">2</span>')
+        ->toContain('<p class="front-step__time t1 cm">Week 2</p>')
+        ->toContain('<ol class="front-flow__list f fw ac g2" aria-label="How it works">')
+        ->toContain('<li class="front-flow__arrow f cm" aria-hidden="true">')
         ->toContain('<p class="front-chip front-step__chip">Built by Example Co</p>')
         ->toContain('<h3 class="front-proof__title">Fast</h3>')
         ->toContain('<p class="front-proof__more"><a href="'.url('/').'/site/services">More</a></p>')
@@ -207,7 +207,7 @@ it('escapes attribute text and drops unsafe links, classes, ids, icons and asset
     'class, variant and id injection' => [
         ":::section class='x\" onclick=\"alert(1)' variant=\"a<b\" id='\"><script>'\nText\n:::\n",
         ['onclick', 'a<b', '<script>', 'front-section--a'],
-        ['<section class="front-section"'],
+        ['<section class="front-section an-rise"'],
     ],
     'traversal and foreign images' => [
         ":::section image=\"assets/../../.env\"\n:::\n:::card image=\"https://evil.example/x.png\" title=\"T\"\n:::\n:::card image=\"/etc/passwd\" title=\"U\"\n:::\n",
@@ -222,7 +222,7 @@ it('escapes attribute text and drops unsafe links, classes, ids, icons and asset
     'raw html inside a component' => [
         ":::section\n<script>alert(1)</script><iframe src=\"https://evil.example\"></iframe>\n\n[x](javascript:alert(1))\n:::\n",
         ['<script>', '<iframe', 'javascript:'],
-        ['<section class="front-section"'],
+        ['<section class="front-section an-rise"'],
     ],
     'style attribute' => [
         ":::card title=\"A\" style=\"background:url(https://evil.example)\"\n:::\n",

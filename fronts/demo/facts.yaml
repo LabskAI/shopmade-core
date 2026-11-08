@@ -80,10 +80,6 @@ forms:
       en: contact-en
       es: contact-es
 
-# Company scripts: files under assets/ (or AIFormFlow URLs) only.
-scripts:
-  - src: assets/motion.js
-
 logo:
   src: assets/logo.svg
   alt: Demo Home Services

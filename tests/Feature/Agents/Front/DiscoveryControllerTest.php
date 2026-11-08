@@ -11,17 +11,17 @@ it('publishes robots.txt with the sitemap and the AI policy from facts', functio
         ->assertHeader('Content-Type', 'text/plain; charset=UTF-8')
         ->assertSeeInOrder([
             'User-agent: *',
-            'Content-Signal: search=yes, ai-input=yes, ai-train=no',
             'User-agent: OAI-SearchBot',
             'Allow: /site/',
             'User-agent: GPTBot',
             'Disallow: /site/',
             'Sitemap: '.route('front.sitemap'),
-        ], false);
+        ], false)
+        ->assertDontSee('Content-Signal', false);
 });
 
 it('follows facts that allow AI training but not AI search', function () {
-    FrontFixture::create(['facts.yaml' => FrontFixture::facts(['discovery' => ['ai_search' => false, 'ai_training' => true]])]);
+    FrontFixture::create(['facts.yaml' => FrontFixture::facts(['discovery' => ['ai_search' => false, 'ai_training' => true, 'content_signal' => true]])]);
 
     $this->get(route('front.robots'))
         ->assertSee('Content-Signal: search=yes, ai-input=no, ai-train=yes', false)
