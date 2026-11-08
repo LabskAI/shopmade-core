@@ -17,6 +17,8 @@ services:
       - APP_ORG_NAME=${APP_ORG_NAME:-Shopmade}
       # Only Coolify's proxy reaches the container, so its X-Forwarded-* headers can be trusted.
       - TRUSTED_PROXIES=*
+      # The sign-in cookie is sent only over HTTPS. Set it to false while the service runs on a plain http:// domain.
+      - SESSION_SECURE_COOKIE=${SESSION_SECURE_COOKIE:-true}
       # Lets Claude Code and other desktop MCP clients sign in through their http://localhost callback (RFC 8252, with PKCE).
       - AGENTS_OAUTH_ALLOW_LOOPBACK=${AGENTS_OAUTH_ALLOW_LOOPBACK:-true}
       - DB_CONNECTION=pgsql

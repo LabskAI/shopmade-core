@@ -50,6 +50,7 @@ jobs:
           SERVICE_URL_SHOPMADE: http://127.0.0.1:8080
           SERVICE_USER_POSTGRES: shopmade
           SERVICE_PASSWORD_POSTGRES: ci-postgres-password
+          SESSION_SECURE_COOKIE: 'false'
         run: |
           export SERVICE_REALBASE64_32_APPKEY="$(openssl rand -base64 32)"
           cat > /tmp/coolify-ci.yaml <<'EOF'
