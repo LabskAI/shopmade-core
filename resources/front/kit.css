@@ -75,7 +75,7 @@ a { color: var(--color-link, var(--acc)); }
 .front-cta .btn-outline { border-color: var(--acci); }
 .front-quote { margin: var(--space-6, 1.5rem) 0; padding-left: var(--space-4, 1rem); border-left: 3px solid var(--acc); }
 .front-quote__text { margin: 0; font-size: var(--text-lead, 1.25rem); }
-.front-quote__by span::before { content: ", "; }
+.front-quote__by span::before { content: ",\00a0"; }
 .front-step__number { width: 2rem; height: 2rem; }
 .front-step__time { margin: 0; }
 .front-flow__step { flex: 1 1 10rem; }
